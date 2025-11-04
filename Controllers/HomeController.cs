@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using vertacnik_TallerMecanico2025.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace vertacnik_TallerMecanico2025.Controllers;
 
@@ -13,12 +14,24 @@ public class HomeController : Controller
         _logger = logger;
     }
 
+    [AllowAnonymous]
+    public IActionResult Login()
+    {
+        return View();
+    }
+
+    [Authorize]
     public IActionResult Index()
     {
         return View();
     }
 
     public IActionResult Privacy()
+    {
+        return View();
+    }
+
+    public IActionResult Restringido()
     {
         return View();
     }

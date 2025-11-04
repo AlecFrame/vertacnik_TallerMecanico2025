@@ -46,3 +46,60 @@ button.accept-policy {
   white-space: nowrap;
   line-height: 60px;
 }
+
+/* Estilos para los items de la barra de navegación */
+
+.navbar-nav .nav-item { 
+    margin: 0 clamp(2px, 1vw, 10px); /* valor mínimo, preferido, máximo */
+    padding: clamp(2px, 1vw, 8px) clamp(4px, 1.5vw, 12px);
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-item:hover {
+    background-color: #ffee00;
+}
+
+/* Estilos para el avatar y el menú desplegable en la barra de navegación */
+
+.navbar .ms-auto {
+    margin-left: 10px;
+    border-radius: 12px;
+    padding: 8px 12px;
+    border: 1px solid;
+
+    transition: background-color 0.3s ease;
+}
+
+.navbar .ms-auto:hover {
+    background-color: #ffee00;
+}
+
+.navbar .dropdown-toggle::after {
+    display: none; /* quita el triángulo ▼ */
+}
+
+.navbar .dropdown-menu {
+    min-width: 150px;
+    opacity: 0;
+    transform: translateY(-10px);
+    
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.navbar .dropdown-menu.dropdown-menu-end.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.navbar .dropdown-menu button {
+    width: 100%;
+    text-align: left;
+}
+
+.navbar .dropdown-menu.dropdown-menu-end {
+    width: auto; /* ancho automático según contenido (valor por defecto) */
+    min-width: 100%; /* ahora ocupará el mismo ancho que el botón */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}

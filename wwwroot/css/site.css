@@ -29,3 +29,41 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+/* Cosas personalizadas */
+
+table td,
+table th {
+    text-align: center;
+    justify-items: center;
+}
+
+.user-perfil-avatar {
+  object-fit: cover;          /* Ajusta la imagen sin deformarla */
+  object-position: center;    /* Centra el recorte */
+}
+
+.portada-perfil-avatar {
+  background-color: #9e59be;
+  object-fit: cover;          /* Ajusta la imagen sin deformarla */
+  object-position: center;    /* Centra el recorte */
+}
+
+.taller-bg-base {
+  background-color: #fbd70b
+}
+
+.taller-bg-fondo {
+  background-color: #33303f
+}
+
+.taller-container-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid grey;
+  border-radius: 12px;
+  padding: 6px 12px;
+  background-color: white;
+  box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+}

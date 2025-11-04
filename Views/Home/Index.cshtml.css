@@ -1,0 +1,56 @@
+.foto-perfilinfo {
+    width: 80px;
+    height: 80px;
+    margin: 24px 24px;
+}
+
+.nombre-perfilinfo {
+    padding-bottom: 18px;
+    border-bottom: 1px solid #dbdbdb;
+}
+
+.info-perfilinfo {
+    width: 100%;
+}
+
+.btns-perfilinfo {
+    float: right;
+    display: flex;
+    flex-direction: row;
+}
+
+.btn-editar-perfilinfo {
+    margin: 24px 24px;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    padding: 10px 20px;
+    background-color: #07e549;
+    border-radius: 15px;
+
+    transition: background-color 0.3s;
+}
+
+.btn-editar-perfilinfo:hover {
+    background-color: #0ac316;
+    color: white;
+}
+
+.btn-password-perfilinfo {
+    margin: 24px 24px;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    padding: 10px 20px;
+    background-color: #0781e5;
+    border-radius: 15px;
+
+    transition: background-color 0.3s;
+}
+
+.btn-password-perfilinfo:hover {
+    background-color: #0a54c3;
+    color: white;
+}

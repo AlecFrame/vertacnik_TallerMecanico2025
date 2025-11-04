@@ -11,23 +11,57 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light taller-bg-base box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">vertacnik_TallerMecanico2025</a>
+                <a class="navbar-brand" style="font-weight: bold; font-size: 1.5rem; color: #000000; margin: 0 3%;" 
+                asp-area="" asp-controller="Home" asp-action="Index">VertacnikTallerMecánico</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+                        @if (User.Identity.IsAuthenticated) {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            </li>
+                            @if (User.HasClaim("Rol", "Administrador")) {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Usuarios" asp-action="Index">Usuarios</a>
+                                </li>
+                            }
+                        }
                     </ul>
                 </div>
+
+                @if (User.Identity.IsAuthenticated) {
+                    <div class="dropdown ms-auto">
+                        <a class="d-flex align-items-center text-decoration-none dropdown-toggle" href="#" role="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            @if (!string.IsNullOrEmpty(User.FindFirst("Avatar")?.Value))
+                            {
+                                <img src="@Url.Content(@User.FindFirst("Avatar")?.Value)" alt="Perfil" class="rounded-circle user-perfil-avatar" style="width: 32px; height: 32px;" />
+                            }
+                            else
+                            {
+                                string? nombre = User.FindFirst("NombreCompleto")?.Value ?? "";
+                                string? inicial = nombre.Length > 0 ? nombre.Substring(0, 1).ToUpper() : "?";
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center user-perfil-avatar" style="width: 32px; height: 32px;">
+                                    @inicial
+                                </div>
+                            }
+                            <span class="ms-2" style="color: black;">@User.FindFirst("Rol")?.Value @User.FindFirst("NombreCompleto")?.Value</span>
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <form asp-controller="User" asp-action="Logout" method="post" class="m-0">
+                                    <button type="submit" class="dropdown-item">Cerrar sesión</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                }
             </div>
         </nav>
     </header>
@@ -36,15 +70,11 @@
             @RenderBody()
         </main>
     </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - vertacnik_TallerMecanico2025 - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
+    
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/modalForm.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

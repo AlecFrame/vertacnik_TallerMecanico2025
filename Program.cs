@@ -1,7 +1,29 @@
+using vertacnik_TallerMecanico2025.Models;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.Cookies;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<UsuarioRepo>();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Home/Login";
+        options.LogoutPath = "/User/Logout";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(15);
+        options.SlidingExpiration = true;
+        options.AccessDeniedPath = "/Home/Restringido";
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Administrador"));
+    options.AddPolicy("UserOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Mecanico"));
+    options.AddPolicy("UserOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Recepcionista"));
+});
 
 var app = builder.Build();
 

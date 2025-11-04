@@ -1,0 +1,111 @@
+@model vertacnik_TallerMecanico2025.Models.Usuario
+
+<form asp-action="Guardar" asp-controller="Usuarios" method="post" enctype="multipart/form-data" id="formUsuario">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="IdUsuario" />
+    <input type="hidden" asp-for="Avatar" />
+    <div class="form-group text-center">
+        <div id="fotoPreview" class="rounded-circle text-white d-inline-flex justify-content-center align-items-center"
+            style="width:100px;height:100px;font-size:36px;overflow:hidden;background-color:#9e59be;">
+            @if (!string.IsNullOrEmpty(Model.Avatar))
+            {
+                <img src="@Url.Content(Model.Avatar)" alt="Foto de perfil" class="w-100 h-100" style="object-fit: cover;" />
+            }
+            else
+            {
+                <span>@Model.Nombre?.Substring(0, 1).ToUpper()</span>
+            }
+        </div>
+        <br />
+        @if (!string.IsNullOrEmpty(Model.Avatar))
+        {
+            <button type="button" id="btnEliminarFoto" class="btn btn-danger btn-sm mt-2">Eliminar Foto</button>
+            <input type="hidden" id="eliminarFoto" name="eliminarFoto" value="false" />
+        }
+        <input type="file" id="fotoInput" name="foto" class="form-control mt-2" accept="image/*" />
+    </div><br>
+    <div class="form-group">
+        <label asp-for="Nombre" class="control-label"></label>
+        <input asp-for="Nombre" class="form-control" />
+        <span asp-validation-for="Nombre" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Apellido" class="control-label"></label>
+        <input asp-for="Apellido" class="form-control" />
+        <span asp-validation-for="Apellido" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Dni" class="control-label"></label>
+        <input asp-for="Dni" class="form-control" />
+        <span asp-validation-for="Dni" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Telefono" class="control-label"></label>
+        <input asp-for="Telefono" class="form-control" />
+        <span asp-validation-for="Telefono" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Email" class="control-label"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Rol" class="control-label"></label>
+        <select asp-for="Rol" class="form-control" asp-items="Html.GetEnumSelectList<vertacnik_TallerMecanico2025.Models.RolUsuario>()">
+            <option value="">-- Seleccione Tipo --</option>
+        </select>
+        <span asp-validation-for="Rol" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ClaveHash"></label>
+        @if (Model.IdUsuario != 0)
+        {
+            <small class="form-text text-muted"> Deja este campo vacío si no deseas cambiar la contraseña.</small>
+        }else {
+            <small class="form-text text-muted"> Ingrese la contraseña para el nuevo usuario.</small>
+        }
+        <input asp-for="ClaveHash" class="form-control"/>
+        <span asp-validation-for="ClaveHash" class="text-danger"></span>
+    </div><br>
+    <div class="mb-3 text-end">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    </div>
+</form>
+
+<script>
+(function () {
+    const input = document.getElementById('fotoInput');
+    const preview = document.getElementById('fotoPreview');
+    const eliminarFoto = document.getElementById('eliminarFoto');
+    const btnEliminar = document.getElementById('btnEliminarFoto');
+
+    if (input) {
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    preview.innerHTML = `<img src="${ev.target.result}" alt="Foto de perfil" class="w-100 h-100" style="object-fit:cover;border-radius:50%;">`;
+                };
+                reader.readAsDataURL(file);
+                if (eliminarFoto) eliminarFoto.value = "false"; // se reemplazó la foto
+            }
+        });
+    }
+
+    if (btnEliminar) {
+        // inicial se calcula en servidor para evitar manipulación de strings en JS
+        const initialLetter = '@(Model.Nombre != null ? Model.Nombre.Substring(0,1).ToUpper() : "?")';
+        btnEliminar.addEventListener('click', () => {
+            preview.innerHTML = `<span>${initialLetter}</span>`;
+            // limpiar input file
+            try { input.value = ""; } catch(e) { /* ignore */ }
+            // limpiar hidden que guarda la ruta actual de la foto
+            const hiddenFoto = document.getElementById('Foto');
+            if (hiddenFoto) hiddenFoto.value = "";
+            if (eliminarFoto) eliminarFoto.value = "true";
+        });
+    }
+})();
+</script>

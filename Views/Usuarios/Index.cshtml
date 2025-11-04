@@ -1,0 +1,130 @@
+@model IEnumerable<vertacnik_TallerMecanico2025.Models.Usuario>
+
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+</style>
+
+<div class="container-fluid taller-container-table">
+    <div class="text-center">
+        <h2>Gestión de Usuarios</h2>
+    </div>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Avatar</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var u in Model)
+                {
+                    <tr>
+                        <td>@u.IdUsuario</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(u.Avatar))
+                            {
+                                <img src="@Url.Content(u.Avatar)" alt="Foto de perfil" class="rounded-circle user-perfil-foto" style="width: 32px; height: 32px;" />
+                            }
+                            else
+                            {
+                                string? inicial = u.Nombre.Length > 0 ? u.Nombre.Substring(0, 1).ToUpper() : "?";
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center user-perfil-foto" style="width: 32px; height: 32px;">
+                                    @inicial
+                                </div>
+                            }
+                        </td>
+                        <td>@u.Nombre</td>
+                        <td>@u.Apellido</td>
+                        <td>@u.Dni</td>
+                        <td>@u.Telefono</td>
+                        <td>@u.Email</td>
+                        <td>@u.Rol</td>
+                        <td>@(u.Estado ? "Activo" : "Inactivo")</td>
+                        <td>
+                            @if (u.Estado)
+                            {
+                                <a href="javascript:void(0);" class="btn btn-sm btn-primary btn-editar-usuario" data-id="@u.IdUsuario">Editar</a>
+                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
+                                <a asp-controller="Usuarios" asp-action="Inactivar" asp-route-id="@u.IdUsuario" class="btn btn-sm btn-danger">Baja</a>
+                                }
+                            }
+                            else
+                            {
+                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
+                                <a asp-controller="Usuarios" asp-action="Activar" asp-route-id="@u.IdUsuario" class="btn btn-sm btn-success">Alta</a>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="10" class="text-center">No hay usuarios registrados.</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="10" class="text-end">
+                    <a href="javascript:void(0);" style="margin: 0 50%;" id="btnCrearUsuario" class="btn btn-success">+</a>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalUsuarioLabel">Usuario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+                <!-- El contenido del formulario se cargará aquí mediante AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script>
+        configurarModalForm({
+            modalId: "#modalUsuario",
+            formId: "#formUsuario",
+            createUrl: '@Url.Action("Crear", "Usuarios")',
+            editUrl: '@Url.Action("Editar", "Usuarios")',
+            createButtonId: "#btnCrearUsuario",
+            editButtonClass: ".btn-editar-usuario"
+        });
+    </script>
+    @if (ViewBag.ModalHtml != null)
+    {
+        <script>
+            // Insertar el partial ya renderizado por el servidor (contiene valores y mensajes de validación)
+            $(function() {
+                $("#modalUsuario .modal-body").html(@Html.Raw(Json.Serialize(ViewBag.ModalHtml)));
+                $("#modalUsuario").modal('show');
+            });
+        </script>
+    }
+}

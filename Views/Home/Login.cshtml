@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+</style>
+
+<div class="container-fluid taller-container-table" style="width: 500px; height: 400px; margin-top: 5rem;">
+    <div class="container mt-5" style="max-width:400px;">
+        <h3 class="text-center mb-3">Iniciar sesión</h3>
+        <form asp-controller="User" asp-action="Login" method="post">
+            <div class="form-group mb-3">
+                <label>Email</label>
+                <input type="email" name="email" class="form-control" required />
+            </div>
+            <div class="form-group mb-3">
+                <label>Contraseña</label>
+                <input type="password" name="password" class="form-control" required />
+            </div>
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger" role="alert">
+                    @ViewBag.Error
+                </div>
+            }
+            <button type="submit" class="btn btn-primary w-100">Entrar</button>
+        </form>
+    </div>
+</div>
