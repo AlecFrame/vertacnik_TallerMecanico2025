@@ -1,0 +1,104 @@
+@model IEnumerable<vertacnik_TallerMecanico2025.Models.Cliente>
+
+@{
+    ViewData["Title"] = "Clientes";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+</style>
+
+<div class="container-fluid taller-container-table">
+    <div class="text-center">
+        <h2>Gestión de Clientes</h2>
+    </div>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var c in Model)
+                {
+                    <tr>
+                        <td>@c.IdCliente</td>
+                        <td>@c.Nombre</td>
+                        <td>@c.Apellido</td>
+                        <td>@c.Dni</td>
+                        <td>@c.Telefono</td>
+                        <td>@c.Email</td>
+                        <td>@(c.Estado ? "Activo" : "Inactivo")</td>
+                        <td>
+                            @if (c.Estado)
+                            {
+                                <a href="javascript:void(0);" class="btn btn-sm btn-primary btn-editar-cliente" data-id="@c.IdCliente">Editar</a>
+                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
+                                <a asp-controller="Clientes" asp-action="Inactivar" asp-route-id="@c.IdCliente" class="btn btn-sm btn-danger">Baja</a>
+                                }
+                            }
+                            else
+                            {
+                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
+                                <a asp-controller="Clientes" asp-action="Activar" asp-route-id="@c.IdCliente" class="btn btn-sm btn-success">Alta</a>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="10" class="text-center">No hay clientes registrados.</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="10" class="text-end">
+                    <a href="javascript:void(0);" style="margin: 0 50%;" id="btnCrearCliente" class="btn btn-success">+</a>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="modal fade" id="modalCliente" tabindex="-1" aria-labelledby="modalClienteLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalClienteLabel">Cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+                <!-- El contenido del formulario se cargará aquí mediante AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script>
+        configurarModalForm({
+            modalId: "#modalCliente",
+            formId: "#formCliente",
+            createUrl: '@Url.Action("Crear", "Clientes")',
+            editUrl: '@Url.Action("Editar", "Clientes")',
+            createButtonId: "#btnCrearCliente",
+            editButtonClass: ".btn-editar-cliente"
+        });
+    </script>
+}

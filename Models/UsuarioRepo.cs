@@ -4,6 +4,13 @@ using System.Security.Cryptography;
 
 namespace vertacnik_TallerMecanico2025.Models
 {
+
+    public class AuthResult
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public Usuario? Usuario { get; set; }
+    }
     public class UsuarioRepo : RepositorioBase
     {
         public UsuarioRepo(IConfiguration configuration) : base(configuration) { }
@@ -146,6 +153,8 @@ namespace vertacnik_TallerMecanico2025.Models
         }
         public bool VerificarClave(Usuario usuario, string clavePlana)
         {
+            if (clavePlana == null || usuario.ClaveHash == null)
+                return false;
             var parts = usuario.ClaveHash.Split('.');
             if (parts.Length != 2)
                 return false;
@@ -238,47 +247,70 @@ namespace vertacnik_TallerMecanico2025.Models
 
             return usuarios;
         }
-        public Usuario? AuthenticateUser(string email, string password)
+        public AuthResult AuthenticateUser(string email, string password)
         {
-            Usuario? usuario = null;
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    Message = "El correo electrónico y la contraseña son obligatorios."
+                };
+            }
 
             using (var connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
+
                 var query = "SELECT * FROM Usuarios WHERE Email = @Email";
                 using (var command = new MySqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Email", email);
                     using (var reader = command.ExecuteReader())
                     {
-                        if (reader.Read())
+                        if (!reader.Read())
                         {
-                            usuario = new Usuario
+                            return new AuthResult
                             {
-                                IdUsuario = Convert.ToInt32(reader["IdUsuario"]),
-                                Dni = reader["Dni"].ToString(),
-                                Nombre = reader["Nombre"].ToString(),
-                                Apellido = reader["Apellido"].ToString(),
-                                Email = reader["Email"].ToString(),
-                                Telefono = reader["Telefono"].ToString(),
-                                ClaveHash = reader["ClaveHash"].ToString(),
-                                Rol = (RolUsuario)Enum.Parse(typeof(RolUsuario), reader["Rol"].ToString()!),
-                                Estado = Convert.ToBoolean(reader["Estado"]),
-                                Avatar = reader["Avatar"] != DBNull.Value ? reader["Avatar"].ToString() : null
+                                Success = false,
+                                Message = "El correo electrónico no está registrado."
                             };
-
-                            // Verificar la clave
-                            if (!VerificarClave(usuario, password))
-                            {
-                                usuario = null; // Clave incorrecta
-                            }
                         }
+
+                        var usuario = new Usuario
+                        {
+                            IdUsuario = Convert.ToInt32(reader["IdUsuario"]),
+                            Dni = reader["Dni"].ToString(),
+                            Nombre = reader["Nombre"].ToString(),
+                            Apellido = reader["Apellido"].ToString(),
+                            Email = reader["Email"].ToString(),
+                            Telefono = reader["Telefono"].ToString(),
+                            ClaveHash = reader["ClaveHash"].ToString(),
+                            Rol = (RolUsuario)Enum.Parse(typeof(RolUsuario), reader["Rol"].ToString()!),
+                            Estado = Convert.ToBoolean(reader["Estado"]),
+                            Avatar = reader["Avatar"] != DBNull.Value ? reader["Avatar"].ToString() : null
+                        };
+
+                        // Verificar la clave
+                        if (!VerificarClave(usuario, password))
+                        {
+                            return new AuthResult
+                            {
+                                Success = false,
+                                Message = "La contraseña es incorrecta."
+                            };
+                        }
+
+                        // Usuario y clave correctos
+                        return new AuthResult
+                        {
+                            Success = true,
+                            Usuario = usuario
+                        };
                     }
                 }
-                connection.Close();
             }
-
-            return usuario;
         }
+
     }
 }

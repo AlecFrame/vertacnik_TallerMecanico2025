@@ -8,17 +8,17 @@
     }
 </style>
 
-<div class="container-fluid taller-container-table" style="width: 500px; height: 400px; margin-top: 5rem;">
+<div class="container-fluid taller-container-table" style="width: 500px; padding-bottom: 4rem; margin-top: 5rem;">
     <div class="container mt-5" style="max-width:400px;">
         <h3 class="text-center mb-3">Iniciar sesión</h3>
         <form asp-controller="User" asp-action="Login" method="post">
             <div class="form-group mb-3">
                 <label>Email</label>
-                <input type="email" name="email" class="form-control" required />
+                <input type="email" name="email" class="form-control" value="@(ViewBag.Email ?? String.Empty)" />
             </div>
             <div class="form-group mb-3">
                 <label>Contraseña</label>
-                <input type="password" name="password" class="form-control" required />
+                <input type="password" name="password" class="form-control" />
             </div>
             @if (ViewBag.Error != null)
             {

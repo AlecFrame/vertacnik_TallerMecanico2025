@@ -22,10 +22,14 @@ public class UserController : Controller
     [AllowAnonymous]
     public async Task<IActionResult> Login(string email, string password)
     {
-        var usuario = _usuarioRepo.AuthenticateUser(email, password);
-        if (usuario != null)
+        var result = _usuarioRepo.AuthenticateUser(email, password);
+
+        if (result.Success && result.Usuario != null)
         {
-            var claims = new List<Claim>
+            var usuario = result.Usuario;
+            if (usuario != null)
+            {
+                var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, usuario.NombreCompleto),
                 new Claim(ClaimTypes.Role, usuario.Rol.ToString()),
@@ -38,23 +42,27 @@ public class UserController : Controller
                 new Claim("Avatar", usuario.Avatar ?? "")
             };
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var authProperties = new AuthenticationProperties
-            {
-                IsPersistent = true,
-                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(25)
-            };
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var authProperties = new AuthenticationProperties
+                {
+                    IsPersistent = true,
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(25)
+                };
 
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity),
-                authProperties);
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(claimsIdentity),
+                    authProperties);
 
-            return RedirectToAction("Index", "Home");
+                return RedirectToAction("Index", "Home");
+            }
         }
 
-        ModelState.AddModelError(string.Empty, "Credenciales inválidas.");
-        return RedirectToAction("Login", "Home");
+        // Mensaje de error al mismo login
+        ViewBag.Error = result.Message ?? "Credenciales inválidas.";
+        // conservar el email para que el usuario no tenga que volver a escribirlo
+        ViewBag.Email = email;
+        return View("~/Views/Home/Login.cshtml");
     }
 
     [HttpPost]

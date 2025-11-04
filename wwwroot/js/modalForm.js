@@ -22,100 +22,111 @@ function configurarModalForm(options) {
 
     const $modal = $(modalId);
     const $body = $modal.find(".modal-body");
-
-    function abrirModal(url) {
-        // función para (re)ligar el handler de submit del formulario dentro del modal
-        function bindFormSubmit() {
-            $(formId).off("submit").on("submit", function (e) {
-                e.preventDefault();
-                const form = this;
-                const $form = $(this);
-                const formData = new FormData(form);
-
-                const token = $form.find('input[name="__RequestVerificationToken"]').val();
-                if (token) formData.append('__RequestVerificationToken', token);
-
-                $.ajax({
-                    url: $form.attr("action"),
-                    type: $form.attr("method") || 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        ...(token ? { 'RequestVerificationToken': token } : {})
-                    },
-                    success: function (result) {
-                        try {
-                            // Si el servidor devolvió JSON (éxito o errores)
-                            if (typeof result === "object" && result.success !== undefined) {
-                                if (result.success) {
-                                    $modal.modal("hide");
-                                    location.reload();
-                                } else {
-                                    console.warn("Errores:", result.errors);
-                                }
-                                return;
-                            }
-
-                            // Si es HTML (form con errores), volver a renderizar dentro del modal
-                            if (typeof result === "string") {
-                                $body.html(result);
-                                $.validator.unobtrusive.parse(formId);
-                                // volver a ligar el submit para que siga funcionando tras reemplazar el HTML
-                                bindFormSubmit();
-                                return;
-                            }
-
-                            // fallback por si acaso
-                            $modal.modal("hide");
-                            location.reload();
-
-                        } catch (e) {
-                            console.error("Error procesando respuesta del servidor:", e);
-                        }
-                    },
-                    error: function (xhr, status, err) {
-                        console.error(`Error al guardar datos (${modalId}):`, err);
-                        console.error('Status:', xhr.status, 'Response:', xhr.responseText);
-                    }
-                });
-            });
+    // Submit handler delegado (se declara una vez) para evitar races: intercepta cualquier submit
+    function delegatedSubmitHandler(e) {
+        const $form = $(e.currentTarget);
+        try {
+            e.preventDefault();
+        } catch (err) {
+            // si no se pudo prevenir, dejar que continue (no debería ocurrir)
         }
 
-        $body.load(url, function () {
-            $modal.modal("show");
-            $.validator.unobtrusive.parse(formId);
-            // ligar submit la primera vez
-            bindFormSubmit();
-        });
+        // detectar si hay file inputs con archivos -> usar FormData, si no -> serialize
+        const fileInput = $form.find("input[type='file']")[0];
+        const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+
+        const token = $form.find('input[name="__RequestVerificationToken"]').val();
+
+        if (hasFile) {
+            const fd = new FormData($form[0]);
+            if (token) fd.append('__RequestVerificationToken', token);
+
+            $.ajax({
+                url: $form.attr('action'),
+                type: $form.attr('method') || 'POST',
+                data: fd,
+                processData: false,
+                contentType: false,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', ...(token ? { 'RequestVerificationToken': token } : {}) },
+                success: function (result) {
+                    handleAjaxResult(result, $form);
+                },
+                error: function (xhr) {
+                    console.error('Error en petición AJAX (with files):', xhr.status, xhr.responseText);
+                }
+            });
+        } else {
+            const data = $form.serialize();
+            $.ajax({
+                url: $form.attr('action'),
+                type: $form.attr('method') || 'POST',
+                data: data,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function (result) {
+                    handleAjaxResult(result, $form);
+                },
+                error: function (xhr) {
+                    console.error('Error en petición AJAX (no files):', xhr.status, xhr.responseText);
+                }
+            });
+        }
     }
 
-    /* Saque este ejemplo específico para Inquilinos, usa un form generico sin el file o form Data
-    function abrirModalInquilino(url) {
-        $("#contenidoModalInquilino").load(url, function () {
-            var modal = new bootstrap.Modal(document.getElementById('modalInquilino'));
-            modal.show();
-            modal.off("submit").on("submit", "#formInquilino", function (e) {
-                e.preventDefault();
-                var form = $(this);
-                $.ajax({
-                    type: form.attr('method'),
-                    url: form.attr('action'),
-                    data: form.serialize(),
-                    success: function (response) {
-                        if (response.success) {
-                            modal.hide();
-                            location.reload(); // Recargar la página para ver los cambios
+    // función que procesa la respuesta AJAX del servidor (JSON o HTML)
+    function handleAjaxResult(result, $form) {
+        try {
+            if (typeof result === 'object' && result !== null && result.success !== undefined) {
+                if (result.success) {
+                    // éxito
+                    $modal.modal('hide');
+                    location.reload();
+                } else {
+                    // resultado JSON con errores; si trae html, insertarlo, si no, mostrar console
+                    if (result.html) {
+                        $body.html(result.html);
+                        // validar que la librería unobtrusive esté disponible
+                        if (window.jQuery && jQuery.validator && jQuery.validator.unobtrusive && typeof jQuery.validator.unobtrusive.parse === 'function') {
+                            jQuery.validator.unobtrusive.parse($form.selector || 'form');
                         } else {
-                            $("#contenidoModalInquilino").html(response); // Mostrar errores de validación
+                            console.warn('jquery.validate.unobtrusive.parse no está disponible. Asegúrate de que jquery.validate.unobtrusive se cargó correctamente.');
                         }
+                    } else if (Array.isArray(result.errors)) {
+                        console.warn('Errores:', result.errors);
                     }
-                });
-            });
+                }
+                return;
+            }
+
+            // Si nos llegaron HTML directamente (string) lo insertamos
+            if (typeof result === 'string') {
+                $body.html(result);
+                if (window.jQuery && jQuery.validator && jQuery.validator.unobtrusive && typeof jQuery.validator.unobtrusive.parse === 'function') {
+                    jQuery.validator.unobtrusive.parse($form.selector || 'form');
+                } else {
+                    console.warn('jquery.validate.unobtrusive.parse no está disponible. Asegúrate de que jquery.validate.unobtrusive se cargó correctamente.');
+                }
+                return;
+            }
+
+            // fallback
+            $modal.modal('hide');
+            location.reload();
+
+        } catch (e) {
+            console.error('Error procesando resultado AJAX:', e);
+        }
+    }
+
+    // Delegar el submit para el selector del formId: esto evita condiciones donde el submit ocurra
+    // antes de que el handler local sea ligado (por ejemplo al reemplazar HTML dentro del modal)
+    $(document).off('submit', formId).on('submit', formId, delegatedSubmitHandler);
+
+    function abrirModal(url) {
+        $body.load(url, function () {
+            $modal.modal('show');
+            $.validator.unobtrusive.parse(formId);
         });
     }
-    */
 
     // Botón de crear
     if (createButtonId) {
