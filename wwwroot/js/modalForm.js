@@ -8,7 +8,9 @@
  * @param {string} options.editUrl - URL base para editar (por ejemplo '/Usuarios/Editar')
  * @param {string} options.createButtonId - ID del botón de crear (por ejemplo '#btnCrearUsuario')
  * @param {string} options.editButtonClass - clase CSS para botones de editar (por ejemplo '.btn-editar-usuario')
+ * @param {function} [options.onFormSubmitted] - función callback opcional a ejecutar después de un submit exitoso
  */
+
 function configurarModalForm(options) {
 
     const {
@@ -17,7 +19,8 @@ function configurarModalForm(options) {
         createUrl,
         editUrl,
         createButtonId,
-        editButtonClass
+        editButtonClass,
+        onFormSubmitted
     } = options;
 
     const $modal = $(modalId);
@@ -79,7 +82,11 @@ function configurarModalForm(options) {
                 if (result.success) {
                     // éxito
                     $modal.modal('hide');
-                    location.reload();
+                    if (typeof onFormSubmitted === 'function') {
+                        onFormSubmitted();
+                    }else {
+                        location.reload();
+                    }
                 } else {
                     // resultado JSON con errores; si trae html, insertarlo, si no, mostrar console
                     if (result.html) {
@@ -110,8 +117,11 @@ function configurarModalForm(options) {
 
             // fallback
             $modal.modal('hide');
-            location.reload();
-
+            if (typeof onFormSubmitted === 'function') {
+                onFormSubmitted();
+            }else {
+                location.reload();
+            }
         } catch (e) {
             console.error('Error procesando resultado AJAX:', e);
         }

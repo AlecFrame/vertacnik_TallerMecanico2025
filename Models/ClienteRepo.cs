@@ -77,7 +77,7 @@ namespace vertacnik_TallerMecanico2025.Models
             {
                 connection.Open();
                 string sql = "UPDATE clientes SET Dni = @Dni, Nombre = @Nombre, Apellido = @Apellido, " +
-                             "Email = @Email, Telefono = @Telefono, Estado = @Estado WHERE IdCliente = @IdCliente";
+                             "Telefono = @Telefono, Email = @Email WHERE IdCliente = @IdCliente";
                 using (MySqlCommand command = new MySqlCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@Dni", cliente.Dni);
@@ -85,7 +85,6 @@ namespace vertacnik_TallerMecanico2025.Models
                     command.Parameters.AddWithValue("@Apellido", cliente.Apellido);
                     command.Parameters.AddWithValue("@Email", cliente.Email);
                     command.Parameters.AddWithValue("@Telefono", cliente.Telefono);
-                    command.Parameters.AddWithValue("@Estado", cliente.Estado);
                     command.Parameters.AddWithValue("@IdCliente", cliente.IdCliente);
                     command.ExecuteNonQuery();
                 }

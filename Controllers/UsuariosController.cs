@@ -220,15 +220,24 @@ public class UsuariosController : Controller
         var usuario = _repo.ObtenerPorId(id);
         return PartialView("_FormularioUsuario", usuario);
     }
-    public IActionResult Inactivar(int id)
+
+    [HttpPost]
+    public IActionResult CambiarEstado(int id, bool activo)
     {
-        _repo.CambiarEstado(id, false);
+        _repo.CambiarEstado(id, activo);
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            return Json(new { success = true });
+        }
+
         return RedirectToAction("Index");
     }
-    public IActionResult Activar(int id)
+
+    public IActionResult CargarTabla()
     {
-        _repo.CambiarEstado(id, true);
-        return RedirectToAction("Index");
+        var lista = _repo.ObtenerTodos();
+        return PartialView("_TablaUsuarios", lista);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

@@ -54,8 +54,16 @@ public class ClientesController : Controller
             // Si es AJAX, devolver JSON con errores, si no, redirigir
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-                var errores = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return Json(new { success = false, errors = errores });
+                // Construir un diccionario campo -> lista de errores para que el cliente Vue pueda
+                // mostrar los mensajes debajo de cada campo (por ejemplo: errores.Nombre => ["Requerido"])
+                var errorDict = ModelState
+                    .Where(kvp => kvp.Value.Errors != null && kvp.Value.Errors.Count > 0)
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToList()
+                    );
+
+                return Json(new { success = false, errors = errorDict });
             }
             else
             {
@@ -64,31 +72,24 @@ public class ClientesController : Controller
         }
     }
 
-    public IActionResult Crear()
+    [HttpPost]
+    public IActionResult CambiarEstado(int id, bool activo)
     {
-        return PartialView("_FormularioCliente", new Cliente());
-    }
+        _repo.CambiarEstado(id, activo);
 
-    public IActionResult Editar(int id)
-    {
-        var cliente = _repo.ObtenerPorId(id);
-        if (cliente == null)
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
-            return NotFound();
+            return Json(new { success = true });
         }
-        return PartialView("_FormularioCliente", cliente);
-    }
 
-    public IActionResult Inactivar(int id)
-    {
-        _repo.CambiarEstado(id, false);
         return RedirectToAction("Index");
     }
 
-    public IActionResult Activar(int id)
+    [HttpGet]
+    public IActionResult GetAll()
     {
-        _repo.CambiarEstado(id, true);
-        return RedirectToAction("Index");
+        var lista = _repo.ObtenerTodos();
+        return Json(lista);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

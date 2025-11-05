@@ -193,7 +193,7 @@ namespace vertacnik_TallerMecanico2025.Models
                 connection.Open();
                 var query = @"UPDATE Usuarios 
                               SET Nombre = @Nombre, Apellido = @Apellido, Email = @Email, 
-                                  Telefono = @Telefono, Rol = @Rol, Estado = @Estado, Avatar = @Avatar
+                                  Telefono = @Telefono, Rol = @Rol, Avatar = @Avatar
                               WHERE IdUsuario = @IdUsuario";
                 using (var command = new MySqlCommand(query, connection))
                 {
@@ -202,7 +202,6 @@ namespace vertacnik_TallerMecanico2025.Models
                     command.Parameters.AddWithValue("@Email", usuario.Email);
                     command.Parameters.AddWithValue("@Telefono", usuario.Telefono);
                     command.Parameters.AddWithValue("@Rol", usuario.Rol.ToString());
-                    command.Parameters.AddWithValue("@Estado", usuario.Estado);
                     command.Parameters.AddWithValue("@Avatar", (object?)usuario.Avatar ?? DBNull.Value);
                     command.Parameters.AddWithValue("@IdUsuario", usuario.IdUsuario);
 
@@ -262,7 +261,7 @@ namespace vertacnik_TallerMecanico2025.Models
             {
                 connection.Open();
 
-                var query = "SELECT * FROM Usuarios WHERE Email = @Email";
+                var query = "SELECT * FROM Usuarios WHERE Email = @Email AND Estado = 1";
                 using (var command = new MySqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Email", email);

@@ -8,9 +8,10 @@
     body {
         background: radial-gradient(circle, #18181c 20%, #2a2733);
     }
+    [v-cloak] { display: none; }
 </style>
 
-<div class="container-fluid taller-container-table">
+<div id="app" v-cloak class="container-fluid taller-container-table">
     <div class="text-center">
         <h2>Gestión de Clientes</h2>
     </div>
@@ -29,76 +30,180 @@
             </tr>
         </thead>
         <tbody>
-            @if (Model != null && Model.Any())
-            {
-                foreach (var c in Model)
-                {
-                    <tr>
-                        <td>@c.IdCliente</td>
-                        <td>@c.Nombre</td>
-                        <td>@c.Apellido</td>
-                        <td>@c.Dni</td>
-                        <td>@c.Telefono</td>
-                        <td>@c.Email</td>
-                        <td>@(c.Estado ? "Activo" : "Inactivo")</td>
-                        <td>
-                            @if (c.Estado)
-                            {
-                                <a href="javascript:void(0);" class="btn btn-sm btn-primary btn-editar-cliente" data-id="@c.IdCliente">Editar</a>
-                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
-                                <a asp-controller="Clientes" asp-action="Inactivar" asp-route-id="@c.IdCliente" class="btn btn-sm btn-danger">Baja</a>
-                                }
-                            }
-                            else
-                            {
-                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
-                                <a asp-controller="Clientes" asp-action="Activar" asp-route-id="@c.IdCliente" class="btn btn-sm btn-success">Alta</a>
-                                }
-                            }
-                        </td>
-                    </tr>
-                }
-            }
-            else
-            {
-                <tr>
-                    <td colspan="10" class="text-center">No hay clientes registrados.</td>
-                </tr>
-            }
+            <tr v-for="cliente in clientes" :key="cliente.idCliente">
+                <td>{{ cliente.idCliente }}</td>
+                <td>{{ cliente.nombre }}</td>
+                <td>{{ cliente.apellido }}</td>
+                <td>{{ cliente.dni }}</td>
+                <td>{{ cliente.telefono }}</td>
+                <td>{{ cliente.email }}</td>
+                <td>
+                    <span v-if="cliente.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
+                    <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
+                </td>
+                <td>
+                    <button v-if="cliente.estado" class="btn btn-sm btn-primary" @@click="editarCliente(cliente)">Editar</button>
+                    <button v-if="cliente.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(cliente, false)">Baja</button>
+                    <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(cliente, true)">Alta</button>
+                </td>
+            </tr>
+            <tr v-if="clientes.length === 0">
+                <td colspan="10" class="text-center">No hay clientes registrados.</td>
+            </tr>
         </tbody>
         <tfoot>
             <tr>
                 <td colspan="10" class="text-end">
-                    <a href="javascript:void(0);" style="margin: 0 50%;" id="btnCrearCliente" class="btn btn-success">+</a>
+                    <button class="btn btn-success" @@click="abrirModalNuevo" style="margin: 0 50%;">+</button>
                 </td>
             </tr>
         </tfoot>
     </table>
-</div>
 
-<div class="modal fade" id="modalCliente" tabindex="-1" aria-labelledby="modalClienteLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalClienteLabel">Cliente</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-                <!-- El contenido del formulario se cargará aquí mediante AJAX -->
-      </div>
+    <!-- Modal de Cliente -->
+    <div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form  @@submit.prevent="guardarCliente()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Nombre</label>
+                            <input v-model="form.nombre" name="Nombre" class="form-control">
+                            <div v-if="errores.Nombre" class="text-danger">{{ errores.Nombre[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Apellido</label>
+                            <input v-model="form.apellido" name="Apellido" class="form-control">
+                            <div v-if="errores.Apellido" class="text-danger">{{ errores.Apellido[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>DNI</label>
+                            <input v-model="form.dni" name="Dni" class="form-control">
+                            <div v-if="errores.Dni" class="text-danger">{{ errores.Dni[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Teléfono</label>
+                            <input v-model="form.telefono" name="Telefono" class="form-control">
+                            <div v-if="errores.Telefono" class="text-danger">{{ errores.Telefono[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Email</label>
+                            <input v-model="form.email" name="Email" type="email" class="form-control">
+                            <div v-if="errores.Email" class="text-danger">{{ errores.Email[0] }}</div>
+                        </div>
+                        <input type="hidden" name="IdCliente" :value="form.idCliente" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarCliente()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 @section Scripts {
-    <script>
-        configurarModalForm({
-            modalId: "#modalCliente",
-            formId: "#formCliente",
-            createUrl: '@Url.Action("Crear", "Clientes")',
-            editUrl: '@Url.Action("Editar", "Clientes")',
-            createButtonId: "#btnCrearCliente",
-            editButtonClass: ".btn-editar-cliente"
-        });
-    </script>
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            clientes: [],
+            form: {
+                idCliente: 0,
+                nombre: '',
+                apellido: '',
+                dni: '',
+                telefono: '',
+                email: '',
+                estado: true
+            },
+            modalTitulo: '',
+            errores: {}
+        };
+    },
+    mounted() {
+        this.cargarClientes();
+    },
+    methods: {
+        cargarClientes() {
+            fetch('/Clientes/GetAll')
+                .then(res => res.json())
+                .then(data => {
+                    this.clientes = data;
+                });
+        },
+        abrirModalNuevo() {
+            this.modalTitulo = "Nuevo Cliente";
+            this.form = { idCliente: 0, nombre: '', apellido: '', dni: '', telefono: '', email: '', estado: true };
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalCliente')).show();
+        },
+        editarCliente(cliente) {
+            this.modalTitulo = "Editar Cliente";
+            this.form = { ...cliente };
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalCliente')).show();
+        },
+        async guardarCliente() {
+            try {
+                // Construir FormData manualmente e incluir el token antiforgery que generó Razor (@Html.AntiForgeryToken())
+                const tokenInput = document.querySelector('#modalCliente input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : null;
+
+                const fd = new FormData();
+                fd.append('IdCliente', this.form.idCliente || 0);
+                fd.append('Nombre', this.form.nombre || '');
+                fd.append('Apellido', this.form.apellido || '');
+                fd.append('Dni', this.form.dni || '');
+                fd.append('Telefono', this.form.telefono || '');
+                fd.append('Email', this.form.email || '');
+                if (token) fd.append('__RequestVerificationToken', token);
+
+                const res = await fetch('/Clientes/Guardar', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    this.errores = {}; // limpiar errores
+                    this.cargarClientes();
+                    bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
+                } else if (data.errors) {
+                    this.errores = data.errors; // guardar errores del servidor
+                } else {
+                    alert('Error al guardar el cliente');
+                }
+            } catch (err) {
+                console.error('guardarCliente error:', err);
+                alert('Ocurrió un error al guardar. Revisa la consola.');
+            }
+        },
+        cambiarEstado(cliente, activo) {
+            fetch(`/Clientes/CambiarEstado?id=${cliente.idCliente}&activo=${activo}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.cargarClientes();
+                } else {
+                    alert("No se pudo cambiar el estado");
+                }
+            });
+        }
+    }
+}).mount('#app');
+</script>
 }

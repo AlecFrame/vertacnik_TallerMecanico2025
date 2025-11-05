@@ -30,57 +30,8 @@
                 <th>Acción</th>
             </tr>
         </thead>
-        <tbody>
-            @if (Model != null && Model.Any())
-            {
-                foreach (var u in Model)
-                {
-                    <tr>
-                        <td>@u.IdUsuario</td>
-                        <td>
-                            @if (!string.IsNullOrEmpty(u.Avatar))
-                            {
-                                <img src="@Url.Content(u.Avatar)" alt="Foto de perfil" class="rounded-circle user-perfil-foto" style="width: 32px; height: 32px;" />
-                            }
-                            else
-                            {
-                                string? inicial = u.Nombre.Length > 0 ? u.Nombre.Substring(0, 1).ToUpper() : "?";
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center user-perfil-foto" style="width: 32px; height: 32px;">
-                                    @inicial
-                                </div>
-                            }
-                        </td>
-                        <td>@u.Nombre</td>
-                        <td>@u.Apellido</td>
-                        <td>@u.Dni</td>
-                        <td>@u.Telefono</td>
-                        <td>@u.Email</td>
-                        <td>@u.Rol</td>
-                        <td>@(u.Estado ? "Activo" : "Inactivo")</td>
-                        <td>
-                            @if (u.Estado)
-                            {
-                                <a href="javascript:void(0);" class="btn btn-sm btn-primary btn-editar-usuario" data-id="@u.IdUsuario">Editar</a>
-                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
-                                <a asp-controller="Usuarios" asp-action="Inactivar" asp-route-id="@u.IdUsuario" class="btn btn-sm btn-danger">Baja</a>
-                                }
-                            }
-                            else
-                            {
-                                @if (User.Identity.IsAuthenticated && User.HasClaim("Rol", "Administrador")) {
-                                <a asp-controller="Usuarios" asp-action="Activar" asp-route-id="@u.IdUsuario" class="btn btn-sm btn-success">Alta</a>
-                                }
-                            }
-                        </td>
-                    </tr>
-                }
-            }
-            else
-            {
-                <tr>
-                    <td colspan="10" class="text-center">No hay usuarios registrados.</td>
-                </tr>
-            }
+        <tbody id="tablaUsuariosBody">
+            @await Html.PartialAsync("_TablaUsuarios", Model)
         </tbody>
         <tfoot>
             <tr>
@@ -108,13 +59,36 @@
 
 @section Scripts {
     <script>
+        function cambiarEstado(id, activo) {
+            $.post('@Url.Action("CambiarEstado", "Usuarios")', { id: id, activo: activo })
+                .done(function (res) {
+                    if (res.success) {
+                        cargarTabla(); // recarga solo la tabla
+                    } else {
+                        alert("No se pudo cambiar el estado");
+                    }
+                })
+                .fail(function () {
+                    alert("Error al intentar cambiar el estado");
+                });
+        }
+
+        function cargarTabla() {
+            $.get('@Url.Action("CargarTabla", "Usuarios")', 
+                { /* Agregar filtros si se necesitan */ },
+                function(data) { $('#tablaUsuariosBody').html(data); }
+            );
+        }
+
+
         configurarModalForm({
             modalId: "#modalUsuario",
             formId: "#formUsuario",
             createUrl: '@Url.Action("Crear", "Usuarios")',
             editUrl: '@Url.Action("Editar", "Usuarios")',
             createButtonId: "#btnCrearUsuario",
-            editButtonClass: ".btn-editar-usuario"
+            editButtonClass: ".btn-editar-usuario",
+            onFormSubmitted: cargarTabla
         });
     </script>
     @if (ViewBag.ModalHtml != null)
