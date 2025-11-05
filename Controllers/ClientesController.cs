@@ -92,6 +92,13 @@ public class ClientesController : Controller
         return Json(lista);
     }
 
+    [HttpGet]
+    public IActionResult GetPaged(int pagina = 1, int tamanioPagina = 10)
+    {
+        var (lista, total) = _repo.ObtenerPaginado(pagina, tamanioPagina);
+        return Json(new { data = lista, total });
+    }
+
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {

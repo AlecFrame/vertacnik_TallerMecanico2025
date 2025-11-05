@@ -60,6 +60,19 @@
         </tfoot>
     </table>
 
+    <!-- Paginación -->
+    <div class="text-center">
+        <button class="btn btn-secondary me-2" 
+                :disabled="paginaActual === 1" 
+                @@click="cargarClientes(paginaActual - 1)">Anterior</button>
+
+        <span>Página {{ paginaActual }} de {{ paginasTotales() }}</span>
+
+        <button class="btn btn-secondary ms-2" 
+                :disabled="paginaActual === paginasTotales()" 
+                @@click="cargarClientes(paginaActual + 1)">Siguiente</button>
+    </div>
+
     <!-- Modal de Cliente -->
     <div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -126,19 +139,27 @@ createApp({
                 estado: true
             },
             modalTitulo: '',
-            errores: {}
+            errores: {},
+            paginaActual: 1,
+            tamanioPagina: 10,
+            totalRegistros: 0,
         };
     },
     mounted() {
         this.cargarClientes();
     },
     methods: {
-        cargarClientes() {
-            fetch('/Clientes/GetAll')
-                .then(res => res.json())
-                .then(data => {
-                    this.clientes = data;
-                });
+        cargarClientes(pagina = 1) {
+            fetch(`/Clientes/GetPaged?pagina=${pagina}&tamanioPagina=${this.tamanioPagina}`)
+            .then(res => res.json())
+            .then(data => {
+                this.clientes = data.data;
+                this.totalRegistros = data.total;
+                this.paginaActual = pagina;
+            });
+        },
+        paginasTotales() {
+            return Math.ceil(this.totalRegistros / this.tamanioPagina);
         },
         abrirModalNuevo() {
             this.modalTitulo = "Nuevo Cliente";

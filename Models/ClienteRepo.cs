@@ -122,5 +122,54 @@ namespace vertacnik_TallerMecanico2025.Models
             }
             return cliente;
         }
+
+        public (IList<Cliente> lista, int total) ObtenerPaginado(int pagina, int tamanioPagina)
+        {
+            IList<Cliente> lista = new List<Cliente>();
+            int total = 0;
+
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // 1 Contar total de registros
+                string countSql = "SELECT COUNT(*) FROM clientes";
+                using (MySqlCommand countCmd = new MySqlCommand(countSql, connection))
+                {
+                    total = Convert.ToInt32(countCmd.ExecuteScalar());
+                }
+
+                // 2 Traer sólo los de la página actual
+                int offset = (pagina - 1) * tamanioPagina;
+                string sql = "SELECT * FROM clientes ORDER BY IdCliente ASC LIMIT @Limit OFFSET @Offset";
+
+                using (MySqlCommand command = new MySqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@Limit", tamanioPagina);
+                    command.Parameters.AddWithValue("@Offset", offset);
+
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Cliente cliente = new Cliente
+                            {
+                                IdCliente = reader.GetInt32("IdCliente"),
+                                Dni = reader.GetString("Dni"),
+                                Nombre = reader.GetString("Nombre"),
+                                Apellido = reader.GetString("Apellido"),
+                                Email = reader.GetString("Email"),
+                                Telefono = reader.GetString("Telefono"),
+                                Estado = reader.GetBoolean("Estado")
+                            };
+                            lista.Add(cliente);
+                        }
+                    }
+                }
+            }
+
+            return (lista, total);
+        }
+
     }
 }

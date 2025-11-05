@@ -63,7 +63,7 @@ table th {
   gap: 10px;
   border: 1px solid grey;
   border-radius: 12px;
-  padding: 6px 12px;
+  padding: 1.75rem 12px;
   background-color: white;
   box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
 }
