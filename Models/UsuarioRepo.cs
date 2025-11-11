@@ -311,5 +311,57 @@ namespace vertacnik_TallerMecanico2025.Models
             }
         }
 
+        public (IList<Usuario> lista, int total) ObtenerPaginado(int pagina, int tamanioPagina)
+        {
+            IList<Usuario> usuarios = new List<Usuario>();
+            int total = 0;
+
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // Obtener el total de registros
+                var countQuery = "SELECT COUNT(*) FROM Usuarios";
+                using (var countCommand = new MySqlCommand(countQuery, connection))
+                {
+                    total = Convert.ToInt32(countCommand.ExecuteScalar());
+                }
+
+                // Obtener los registros paginados
+                var query = @"SELECT * FROM Usuarios
+                              ORDER BY IdUsuario
+                              LIMIT @Limit OFFSET @Offset";
+                using (var command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@Limit", tamanioPagina);
+                    command.Parameters.AddWithValue("@Offset", (pagina - 1) * tamanioPagina);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var usuario = new Usuario
+                            {
+                                IdUsuario = Convert.ToInt32(reader["IdUsuario"]),
+                                Dni = reader["Dni"].ToString(),
+                                Nombre = reader["Nombre"].ToString(),
+                                Apellido = reader["Apellido"].ToString(),
+                                Email = reader["Email"].ToString(),
+                                Telefono = reader["Telefono"].ToString(),
+                                ClaveHash = reader["ClaveHash"].ToString(),
+                                Rol = (RolUsuario)Enum.Parse(typeof(RolUsuario), reader["Rol"].ToString()!),
+                                Estado = Convert.ToBoolean(reader["Estado"]),
+                                Avatar = reader["Avatar"] != DBNull.Value ? reader["Avatar"].ToString() : null
+                            };
+                            usuarios.Add(usuario);
+                        }
+                    }
+                }
+
+                connection.Close();
+            }
+
+            return (usuarios, total);
+        }
     }
 }

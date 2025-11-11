@@ -56,6 +56,16 @@ namespace vertacnik_TallerMecanico2025.Models
         [Display(Name = "Foto de perfil")]
         public string? Avatar { get; set; }
 
+        [NotMapped]
+        public string? AvatarRelativePath
+        {
+            get
+            {
+                return !string.IsNullOrEmpty(Avatar) ? Avatar.Replace('~', ' ').Trim() : string.Empty;
+            }
+        }
+
+        [NotMapped]
         public string NombreCompleto => $"{Nombre} {Apellido}";
     }
 }

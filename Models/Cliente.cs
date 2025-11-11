@@ -34,6 +34,11 @@ namespace vertacnik_TallerMecanico2025.Models
         public string Telefono { get; set; }
         [DefaultValue(true)]
         public bool Estado { get; set; }
+
+        [NotMapped]
         public string NombreCompleto => $"{Nombre} {Apellido}";
+        
+        [NotMapped]
+        public string NombreYDni => $"{Nombre} {Apellido} - DNI: {Dni}";
     }
 }

@@ -1,0 +1,244 @@
+@model vertacnik_TallerMecanico2025.Models.Pedido
+
+@{
+    ViewData["Title"] = "Detalles del Pedido";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+    .card {
+        background-color: #f5f5f5;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(255,255,255,0.05);
+    }
+    .card-header {
+        background-color: #e4e4e4;
+        font-weight: bold;
+    }
+    .estado {
+        font-weight: bold;
+        padding: 4px 10px;
+        border-radius: 5px;
+    }
+    .estado.pendiente { background-color: #ffc107; color: #000; }
+    .estado.proceso { background-color: #17a2b8; color: #fff; }
+    .estado.finalizado { background-color: #28a745; color: #fff; }
+    .estado.pagado { background-color: #007bff; color: #fff; }
+    .estado.cancelado { background-color: #dc3545; color: #fff; }
+    [v-cloak] { display: none; }
+</style>
+
+<div id="app" v-cloak class="container-fluid taller-container-table my-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Detalles del Pedido #{{ pedido.idPedido }}</h2>
+        <button class="btn btn-secondary" @@click="volver">← Volver</button>
+    </div>
+
+    <!-- Información general -->
+    <div class="card mb-4">
+        <div class="card-header">Información del Pedido</div>
+        <div class="card-body row">
+            <div class="col-md-6">
+                <p><b>Cliente:</b> {{ pedido.vehiculo.duenoNombre }}</p>
+                <p><b>Vehículo:</b> {{ pedido.vehiculo.descripcionCorta }}</p>
+                <p><b>Fecha ingreso:</b> {{ formatFecha(pedido.fechaIngreso) }}</p>
+                <p><b>Fecha finalización:</b> {{ formatFecha(pedido.fechaFinalizacion) }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><b>Costo estimado:</b> ${{ pedido.costoEstimado }}</p>
+                <p><b>Costo final:</b> {{ pedido.costoFinal ? '$' + pedido.costoFinal : 'Aún no cargado' }}</p>
+                <p><b>Estado:</b> 
+                    <span :class="['estado', estadoClase(pedido.estado)]">{{ estadoNombre(pedido.estado) }}</span>
+                </p>
+                <p><b>Creado por:</b> {{ pedido.creadoPor }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Observaciones -->
+    <div class="card mb-4">
+        <div class="card-header">Observaciones</div>
+        <div class="card-body">
+            <p><b>Del cliente:</b> {{ pedido.observacionCliente || 'Ninguna' }}</p>
+            <p><b>Final:</b> {{ pedido.observacionFinal || 'Sin registrar' }}</p>
+        </div>
+    </div>
+
+    <!-- Servicios -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Servicios del Pedido</span>
+            <button class="btn btn-sm btn-success" @@click="abrirModalServicio">+ Agregar servicio</button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tipo de Servicio</th>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Costo</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="s in servicios" :key="s.idServicio">
+                        <td>{{ s.idServicio }}</td>
+                        <td>{{ s.tipoServicioNombre }}</td>
+                        <td>{{ formatFecha(s.fecha) }}</td>
+                        <td>{{ s.descripcion }}</td>
+                        <td>${{ s.costoBase }}</td>
+                        <td>{{ s.estado }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" @@click="verRepuestos(s)">Repuestos</button>
+                            <button class="btn btn-sm btn-primary" @@click="editarServicio(s)">Editar</button>
+                            <button class="btn btn-sm btn-danger" @@click="eliminarServicio(s)">Eliminar</button>
+                        </td>
+                    </tr>
+                    <tr v-if="servicios.length === 0">
+                        <td colspan="7" class="text-center">No hay servicios cargados.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Repuestos -->
+    <div v-if="repuestosVisibles" class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Repuestos del servicio #{{ servicioSeleccionado.idServicio }}</span>
+            <button class="btn btn-sm btn-success" @@click="abrirModalRepuesto">+ Agregar repuesto</button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Repuesto</th>
+                        <th>Cantidad</th>
+                        <th>Costo</th>
+                        <th>Total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="r in repuestos" :key="r.idDetalleRepuesto">
+                        <td>{{ r.idDetalleRepuesto }}</td>
+                        <td>{{ r.repuesto.nombre }}</td>
+                        <td>{{ r.cantidad }}</td>
+                        <td>${{ r.repuesto.costoRepuestoBase }}</td>
+                        <td>${{ r.total }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" @@click="editarRepuesto(r)">Editar</button>
+                            <button class="btn btn-sm btn-danger" @@click="eliminarRepuesto(r)">Eliminar</button>
+                        </td>
+                    </tr>
+                    <tr v-if="repuestos.length === 0">
+                        <td colspan="6" class="text-center">Sin repuestos registrados.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Acciones finales -->
+    <div class="text-center mt-4">
+        <button class="btn btn-danger me-2" @@click="cancelarPedido">Cancelar Pedido</button>
+        <button class="btn btn-success me-2" @@click="finalizarPedido">Finalizar Pedido</button>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            pedido: {
+                idPedido: @Model.IdPedido,
+                idUsuario: @Model.IdUsuario,
+                idVehiculo: @Model.IdVehiculo,
+                observacionCliente: '@Html.Raw(Model.ObservacionCliente ?? "")',
+                fechaIngreso: '@Model.FechaIngreso.ToString("yyyy-MM-dd")',
+                fechaFinalizacion: '@(Model.FechaFinalizacion?.ToString("yyyy-MM-dd") ?? "")',
+                costoEstimado: '@Model.CostoEstimado.ToString("F2")',
+                costoFinal: '@(Model.CostoFinal?.ToString("F2") ?? "")',
+                estado: @((int)Model.Estado),
+                observacionFinal: '@Html.Raw(Model.ObservacionFinal ?? "")',
+                vehiculo: {
+                    idVehiculo: @(Model.Vehiculo?.IdVehiculo ?? 0),
+                    duenoNombre: '@Html.Raw(Model.Vehiculo?.Cliente?.NombreCompleto ?? "")',
+                    descripcionCorta: '@Html.Raw(Model.Vehiculo?.DescripcionCorta ?? "")'
+                },
+                usuario: {
+                    nombre: '@Html.Raw(Model.Usuario?.NombreCompleto ?? "")'
+                },
+                creadoPor: '@Html.Raw(Model.Usuario?.NombreCompleto ?? "Desconocido")'
+            },
+            servicios: [],
+            repuestos: [],
+            servicioSeleccionado: null,
+            repuestosVisibles: false
+        };
+    },
+    mounted() {
+        this.cargarServicios();
+    },
+    methods: {
+        volver() { window.location.href = '/Pedidos'; },
+        cargarServicios() {
+            fetch(`/Servicios/PorPedido?id=${this.pedido.idPedido}`)
+                .then(res => res.json())
+                .then(data => this.servicios = data);
+        },
+        verRepuestos(servicio) {
+            this.servicioSeleccionado = servicio;
+            this.repuestosVisibles = true;
+            fetch(`/Repuestos/PorServicio?id=${servicio.idServicio}`)
+                .then(res => res.json())
+                .then(data => this.repuestos = data);
+        },
+        formatFecha(fecha) {
+            if (!fecha) return '—';
+            return new Date(fecha).toLocaleDateString();
+        },
+        estadoNombre(valor) {
+            switch (valor) {
+                case 1: return 'Pendiente';
+                case 2: return 'En proceso';
+                case 3: return 'Finalizado';
+                case 4: return 'Pagado';
+                case 5: return 'Cancelado';
+                default: return 'Desconocido';
+            }
+        },
+        estadoClase(valor) {
+            switch (valor) {
+                case 1: return 'pendiente';
+                case 2: return 'proceso';
+                case 3: return 'finalizado';
+                case 4: return 'pagado';
+                case 5: return 'cancelado';
+                default: return '';
+            }
+        },
+        abrirModalServicio() { /* TODO */ },
+        editarServicio(s) { /* TODO */ },
+        eliminarServicio(s) { /* TODO */ },
+        abrirModalRepuesto() { /* TODO */ },
+        editarRepuesto(r) { /* TODO */ },
+        eliminarRepuesto(r) { /* TODO */ },
+        cancelarPedido() { /* TODO */ },
+        finalizarPedido() { /* TODO */ },
+        generarComprobante() { /* TODO */ }
+    }
+}).mount('#app');
+</script>
+}

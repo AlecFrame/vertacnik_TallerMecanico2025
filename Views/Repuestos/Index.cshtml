@@ -1,0 +1,212 @@
+@model IEnumerable<vertacnik_TallerMecanico2025.Models.Repuesto>
+
+@{
+    ViewData["Title"] = "Repuestos";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+    [v-cloak] { display: none; }
+</style>
+
+<div id="app" v-cloak class="container-fluid taller-container-table">
+    <div class="text-center">
+        <h2>Gestión de Repuestos</h2>
+    </div>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Costo Base</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="repuesto in repuestos" :key="repuesto.idRepuesto">
+                <td>{{ repuesto.idRepuesto }}</td>
+                <td>{{ repuesto.nombre }}</td>
+                <td>{{ repuesto.descripcion }}</td>
+                <td>{{ repuesto.costoRepuestoBase }}</td>
+                <td>
+                    <span v-if="repuesto.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
+                    <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
+                </td>
+                <td>
+                    <button v-if="repuesto.estado" class="btn btn-sm btn-primary" @@click="editarRepuesto(repuesto)">Editar</button>
+                    <button v-if="repuesto.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(repuesto, false)">Baja</button>
+                    <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(repuesto, true)">Alta</button>
+                </td>
+            </tr>
+            <tr v-if="repuestos.length === 0">
+                <td colspan="10" class="text-center">No hay repuestos registrados.</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="10" class="text-end">
+                    <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- Paginación -->
+    <div class="text-center">
+        <button class="btn btn-secondary me-2" 
+                :disabled="paginaActual === 1" 
+                @@click="cargarRepuestos(paginaActual - 1)">Anterior</button>
+
+        <span>Página {{ paginaActual }} de {{ paginasTotales() }}</span>
+
+        <button class="btn btn-secondary ms-2" 
+                :disabled="paginaActual === paginasTotales()" 
+                @@click="cargarRepuestos(paginaActual + 1)">Siguiente</button>
+    </div>
+
+    <!-- Modal de Repuesto -->
+    <div class="modal fade" id="modalRepuesto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form  @@submit.prevent="guardarRepuesto()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Nombre</label>
+                            <input v-model="form.nombre" name="Nombre" class="form-control">
+                            <div v-if="errores.Nombre" class="text-danger">{{ errores.Nombre[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Descripción</label>
+                            <input v-model="form.descripcion" name="Descripcion" class="form-control">
+                            <div v-if="errores.Descripcion" class="text-danger">{{ errores.Descripcion[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Costo Base</label>
+                            <input v-model="form.costoRepuestoBase" name="CostoRepuestoBase" type="number" step="0.01" class="form-control">
+                            <div v-if="errores.CostoRepuestoBase" class="text-danger">{{ errores.CostoRepuestoBase[0] }}</div>
+                        </div>
+                        <input type="hidden" name="IdRepuesto" :value="form.idRepuesto" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarRepuesto()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            repuestos: [],
+            form: {
+                idRepuesto: 0,
+                nombre: '',
+                descripcion: '',
+                costoRepuestoBase: '',
+                estado: true
+            },
+            modalTitulo: '',
+            errores: {},
+            paginaActual: 1,
+            tamanioPagina: 10,
+            totalRegistros: 0,
+        };
+    },
+    mounted() {
+        this.cargarRepuestos();
+    },
+    methods: {
+        cargarRepuestos(pagina = 1) {
+            fetch(`/Repuestos/GetPaged?pagina=${pagina}&tamanioPagina=${this.tamanioPagina}`)
+            .then(res => res.json())
+            .then(data => {
+                this.repuestos = data.data;
+                this.totalRegistros = data.total;
+                this.paginaActual = pagina;
+            });
+        },
+        paginasTotales() {
+            return Math.max(Math.ceil(this.totalRegistros / this.tamanioPagina), 1);
+        },
+        abrirModalNuevo() {
+            this.modalTitulo = "Nuevo Repuesto";
+            this.form = { idRepuesto: 0, nombre: '', descripcion: '', costoRepuestoBase: '', estado: true };
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalRepuesto')).show();
+        },
+        editarRepuesto(repuesto) {
+            this.modalTitulo = "Editar Repuesto";
+            this.form = { ...repuesto };
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalRepuesto')).show();
+        },
+        async guardarRepuesto() {
+            try {
+                // Construir FormData manualmente e incluir el token antiforgery que generó Razor (@Html.AntiForgeryToken())
+                const tokenInput = document.querySelector('#modalRepuesto input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : null;
+
+                const fd = new FormData();
+                fd.append('IdRepuesto', this.form.idRepuesto || 0);
+                fd.append('Nombre', this.form.nombre || '');
+                fd.append('Descripcion', this.form.descripcion || '');
+                fd.append('CostoRepuestoBase', this.form.costoRepuestoBase || '');
+                if (token) fd.append('__RequestVerificationToken', token);
+
+                const res = await fetch('/Repuestos/Guardar', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    this.errores = {}; // limpiar errores
+                    this.cargarRepuestos();
+                    bootstrap.Modal.getInstance(document.getElementById('modalRepuesto')).hide();
+                } else if (data.errors) {
+                    this.errores = data.errors; // guardar errores del servidor
+                } else {
+                    alert('Error al guardar el repuesto');
+                }
+            } catch (err) {
+                console.error('guardarRepuesto error:', err);
+                alert('Ocurrió un error al guardar. Revisa la consola.');
+            }
+        },
+        cambiarEstado(repuesto, activo) {
+            fetch(`/Repuestos/CambiarEstado?id=${repuesto.idRepuesto}&activo=${activo}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.cargarRepuestos();
+                } else {
+                    alert("No se pudo cambiar el estado");
+                }
+            });
+        }
+    }
+}).mount('#app');
+</script>
+}

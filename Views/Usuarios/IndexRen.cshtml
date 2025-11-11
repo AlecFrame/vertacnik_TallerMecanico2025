@@ -1,0 +1,104 @@
+@model IEnumerable<vertacnik_TallerMecanico2025.Models.Usuario>
+
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+</style>
+
+<div class="container-fluid taller-container-table">
+    <div class="text-center">
+        <h2>Gestión de Usuarios</h2>
+    </div>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Avatar</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody id="tablaUsuariosBody">
+            @await Html.PartialAsync("_TablaUsuarios", Model)
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="10" class="text-end">
+                    <a href="javascript:void(0);" id="btnCrearUsuario" class="btn btn-success">+</a>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalUsuarioLabel">Usuario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+                <!-- El contenido del formulario se cargará aquí mediante AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script>
+        function cambiarEstado(id, activo) {
+            $.post('@Url.Action("CambiarEstado", "Usuarios")', { id: id, activo: activo })
+                .done(function (res) {
+                    if (res.success) {
+                        cargarTabla(); // recarga solo la tabla
+                    } else {
+                        alert("No se pudo cambiar el estado");
+                    }
+                })
+                .fail(function () {
+                    alert("Error al intentar cambiar el estado");
+                });
+        }
+
+        function cargarTabla() {
+            $.get('@Url.Action("CargarTabla", "Usuarios")', 
+                { /* Agregar filtros si se necesitan */ },
+                function(data) { $('#tablaUsuariosBody').html(data); }
+            );
+        }
+
+
+        configurarModalForm({
+            modalId: "#modalUsuario",
+            formId: "#formUsuario",
+            createUrl: '@Url.Action("Crear", "Usuarios")',
+            editUrl: '@Url.Action("Editar", "Usuarios")',
+            createButtonId: "#btnCrearUsuario",
+            editButtonClass: ".btn-editar-usuario",
+            onFormSubmitted: cargarTabla
+        });
+    </script>
+    @if (ViewBag.ModalHtml != null)
+    {
+        <script>
+            // Insertar el partial ya renderizado por el servidor (contiene valores y mensajes de validación)
+            $(function() {
+                $("#modalUsuario .modal-body").html(@Html.Raw(Json.Serialize(ViewBag.ModalHtml)));
+                $("#modalUsuario").modal('show');
+            });
+        </script>
+    }
+}

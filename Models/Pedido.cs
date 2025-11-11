@@ -7,11 +7,11 @@ namespace vertacnik_TallerMecanico2025.Models
 
     public enum EstadoPedido
     {
-        Pendiente,
-        EnProceso,
-        Finalizado,
-        Pagado,
-        Cancelado
+        Pendiente = 1,
+        EnProceso = 2,
+        Finalizado = 3,
+        Pagado = 4,
+        Cancelado = 5
     }
 
     [Table("pedidos")]
@@ -45,7 +45,7 @@ namespace vertacnik_TallerMecanico2025.Models
         public string? ObservacionFinal { get; set; }
 
         [Required(ErrorMessage = "El Costo Estimado es obligatorio.")]
-        [Range(0.01, 500000000.00, ErrorMessage = "El costo estimado debe estar entre 0.01 y 500,000,000.00.")]
+        [Range(0, 500000000.00, ErrorMessage = "El costo estimado debe estar entre 0 y 500,000,000.00.")]
         [Display(Name = "Costo Estimado")]
         public decimal CostoEstimado { get; set; }
 
@@ -61,5 +61,31 @@ namespace vertacnik_TallerMecanico2025.Models
 
         public Usuario? Usuario { get; set; }
         public Vehiculo? Vehiculo { get; set; }
+        public IList<Servicio>? Servicios { get; set; }
+
+        [NotMapped]
+        public int IdCliente
+        {
+            get { return Vehiculo != null ? Vehiculo.IdCliente : 0; }
+        }
+        
+
+        [NotMapped]
+        public bool SePuedeEditar
+        {
+            get
+            {
+                return Estado != EstadoPedido.Cancelado && Estado != EstadoPedido.Pagado;
+            }
+        }
+
+        [NotMapped]
+        public bool SePuedeActivar
+        {
+            get
+            {
+                return Estado == EstadoPedido.Cancelado;
+            }
+        }
     }
 }

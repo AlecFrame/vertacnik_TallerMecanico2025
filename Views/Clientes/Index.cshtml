@@ -54,7 +54,7 @@
         <tfoot>
             <tr>
                 <td colspan="10" class="text-end">
-                    <button class="btn btn-success" @@click="abrirModalNuevo" style="margin: 0 50%;">+</button>
+                    <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
                 </td>
             </tr>
         </tfoot>
@@ -159,7 +159,7 @@ createApp({
             });
         },
         paginasTotales() {
-            return Math.ceil(this.totalRegistros / this.tamanioPagina);
+            return Math.max(Math.ceil(this.totalRegistros / this.tamanioPagina), 1);
         },
         abrirModalNuevo() {
             this.modalTitulo = "Nuevo Cliente";

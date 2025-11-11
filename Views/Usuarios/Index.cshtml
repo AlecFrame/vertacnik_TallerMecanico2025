@@ -8,9 +8,10 @@
     body {
         background: radial-gradient(circle, #18181c 20%, #2a2733);
     }
+    [v-cloak] { display: none; }
 </style>
 
-<div class="container-fluid taller-container-table">
+<div id="app" v-cloak class="container-fluid taller-container-table">
     <div class="text-center">
         <h2>Gestión de Usuarios</h2>
     </div>
@@ -30,75 +31,308 @@
                 <th>Acción</th>
             </tr>
         </thead>
-        <tbody id="tablaUsuariosBody">
-            @await Html.PartialAsync("_TablaUsuarios", Model)
+        <tbody>
+            <tr v-for="usuario in usuarios" :key="usuario.IdUsuario">
+                <td>{{ usuario.idUsuario }}</td>
+                <td>
+                    <img v-if="usuario.avatar" :src="usuario.avatarRelativePath" alt="Avatar" class="rounded-circle user-perfil-foto" style="width: 32px; height: 32px;" />
+                    <div v-else class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center user-perfil-foto" style="width: 32px; height: 32px;">
+                        <span>{{ (usuario.nombre ? usuario.nombre.charAt(0).toUpperCase() : '') }}</span>
+                    </div>
+                </td>
+                <td>{{ usuario.nombre }}</td>
+                <td>{{ usuario.apellido }}</td>
+                <td>{{ usuario.dni }}</td>
+                <td>{{ usuario.telefono }}</td>
+                <td>{{ usuario.email }}</td>
+                <td>{{ roles[usuario.rol] ?? 'Desconocido' }}</td>
+                <td>
+                    <span v-if="usuario.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
+                    <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
+                </td>
+                <td>
+                    <button v-if="usuario.estado" class="btn btn-sm btn-primary" @@click="editarUsuario(usuario)">Editar</button>
+                    <button v-if="usuario.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(usuario, false)">Baja</button>
+                    <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(usuario, true)">Alta</button>
+                </td>
+            </tr>
+            <tr v-if="usuarios.length === 0">
+                <td colspan="10" class="text-center">No hay usuarios registrados.</td>
+            </tr>
         </tbody>
         <tfoot>
             <tr>
                 <td colspan="10" class="text-end">
-                    <a href="javascript:void(0);" style="margin: 0 50%;" id="btnCrearUsuario" class="btn btn-success">+</a>
+                    <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
                 </td>
             </tr>
         </tfoot>
     </table>
-</div>
 
-<div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalUsuarioLabel">Usuario</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-                <!-- El contenido del formulario se cargará aquí mediante AJAX -->
-      </div>
+    <!-- Paginación -->
+    <div class="text-center">
+        <button class="btn btn-secondary me-2" 
+                :disabled="paginaActual === 1" 
+                @@click="cargarUsuarios(paginaActual - 1)">Anterior</button>
+
+        <span>Página {{ paginaActual }} de {{ paginasTotales() }}</span>
+
+        <button class="btn btn-secondary ms-2" 
+                :disabled="paginaActual === paginasTotales()" 
+                @@click="cargarUsuarios(paginaActual + 1)">Siguiente</button>
     </div>
-  </div>
+
+    <!-- Modal de Usuario -->
+    <div class="modal fade" id="modalUsuario" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form  @@submit.prevent="guardarUsuario()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="IdUsuario" :value="form.idUsuario" />
+                        <!--  Avatar -->
+                        <div class="mb-3 text-center">
+                            <div id="fotoPreview" class="rounded-circle text-white d-inline-flex justify-content-center align-items-center"
+                                style="width:100px;height:100px;font-size:36px;overflow:hidden;background-color:#9e59be;">
+                                <img v-if="form.avatar" :src="form.avatarRelativePath" alt="Avatar" class="w-100 h-100" style="object-fit: cover;" />
+                                <span v-else>
+                                    {{ form.nombre ? form.nombre.charAt(0).toUpperCase() : '?' }}
+                                </span>
+                            </div>
+                            <br />
+                            <div class="d-flex gap-2 justify-content-center" style="flex-direction: column;">
+                                <input type="file" id="fotoInput" name="foto" class="form-control mt-2" accept="image/*" @@change="previsualizarFoto" />
+                                <button type="button" class="btn btn-outline-danger mt-2" @@click="quitarFoto">Quitar avatar</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Nombre</label>
+                            <input v-model="form.nombre" name="Nombre" class="form-control">
+                            <div v-if="errores.Nombre" class="text-danger">{{ errores.Nombre[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Apellido</label>
+                            <input v-model="form.apellido" name="Apellido" class="form-control">
+                            <div v-if="errores.Apellido" class="text-danger">{{ errores.Apellido[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>DNI</label>
+                            <input v-model="form.dni" name="Dni" class="form-control">
+                            <div v-if="errores.Dni" class="text-danger">{{ errores.Dni[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Teléfono</label>
+                            <input v-model="form.telefono" name="Telefono" class="form-control">
+                            <div v-if="errores.Telefono" class="text-danger">{{ errores.Telefono[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Email</label>
+                            <input v-model="form.email" name="Email" type="email" class="form-control">
+                            <div v-if="errores.Email" class="text-danger">{{ errores.Email[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Rol</label>
+                            <select v-model="form.rol" name="Rol" class="form-control">
+                                <option v-for="rol in roles" :key="rol" :value="rol">{{ rol }}</option>
+                            </select>
+                            <div v-if="errores.Rol" class="text-danger">{{ errores.Rol[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Clave</label>
+                            <small v-if="form.idUsuario!=0" class="form-text text-muted">: Dejar en blanco para no cambiar la clave actual.</small>
+                            <input v-model="form.clave" name="Clave" type="password" class="form-control">
+                            <div v-if="errores.Clave" class="text-danger">{{ errores.Clave[0] }}</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarUsuario()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-    <script>
-        function cambiarEstado(id, activo) {
-            $.post('@Url.Action("CambiarEstado", "Usuarios")', { id: id, activo: activo })
-                .done(function (res) {
-                    if (res.success) {
-                        cargarTabla(); // recarga solo la tabla
-                    } else {
-                        alert("No se pudo cambiar el estado");
-                    }
-                })
-                .fail(function () {
-                    alert("Error al intentar cambiar el estado");
-                });
-        }
+<script>
+const { createApp } = Vue;
 
-        function cargarTabla() {
-            $.get('@Url.Action("CargarTabla", "Usuarios")', 
-                { /* Agregar filtros si se necesitan */ },
-                function(data) { $('#tablaUsuariosBody').html(data); }
-            );
-        }
-
-
-        configurarModalForm({
-            modalId: "#modalUsuario",
-            formId: "#formUsuario",
-            createUrl: '@Url.Action("Crear", "Usuarios")',
-            editUrl: '@Url.Action("Editar", "Usuarios")',
-            createButtonId: "#btnCrearUsuario",
-            editButtonClass: ".btn-editar-usuario",
-            onFormSubmitted: cargarTabla
-        });
-    </script>
-    @if (ViewBag.ModalHtml != null)
-    {
-        <script>
-            // Insertar el partial ya renderizado por el servidor (contiene valores y mensajes de validación)
-            $(function() {
-                $("#modalUsuario .modal-body").html(@Html.Raw(Json.Serialize(ViewBag.ModalHtml)));
-                $("#modalUsuario").modal('show');
+createApp({
+    data() {
+        return {
+            usuarios: [],
+            roles: ['Administrador', 'Mecánico', 'Recepcionista'],
+            form: {
+                idUsuario: 0,
+                avatar: null,
+                nombre: '',
+                apellido: '',
+                dni: '',
+                telefono: '',
+                email: '',
+                rol: '',
+                clave: ''
+            },
+                eliminarFoto: false,
+            modalTitulo: '',
+            errores: {},
+            paginaActual: 1,
+            tamanioPagina: 10,
+            totalRegistros: 0
+        };
+    },
+    mounted() {
+        this.cargarUsuarios();
+    },
+    methods: {
+        cargarUsuarios(pagina = 1) {
+            fetch(`/Usuarios/GetPaged?pagina=${pagina}&tamanioPagina=${this.tamanioPagina}`)
+            .then(res => res.json())
+            .then(data => {
+                // soportar varias formas de respuesta: { items, totalRegistros }, { data, total }, o directamente un array
+                const items = data.items ?? data.data ?? data.lista ?? data;
+                const total = data.totalRegistros ?? data.total ?? (Array.isArray(items) ? items.length : 0);
+                this.usuarios = Array.isArray(items) ? items : [];
+                this.totalRegistros = Number.isFinite(total) ? total : (this.usuarios.length || 0);
+                this.paginaActual = pagina;
+            })
+            .catch(err => {
+                console.error('Error cargando usuarios:', err);
+                this.usuarios = [];
+                this.totalRegistros = 0;
             });
-        </script>
+        },
+        paginasTotales() {
+            return Math.max(Math.ceil(this.totalRegistros / this.tamanioPagina), 1);
+        },
+        previsualizarFoto(e) {
+            const input = e.target || document.getElementById('fotoInput');
+            if (!input || !input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                // colocar la imagen en el preview (data URL)
+                this.form.avatar = ev.target.result;
+                // al seleccionar una nueva foto, cancelar el flag de eliminar
+                this.eliminarFoto = false;
+            };
+            reader.readAsDataURL(file);
+        },
+        abrirModalNuevo() {
+            this.modalTitulo = "Nuevo Usuario";
+            this.form = { idUsuario: 0, avatar: null, nombre: '', apellido: '', dni: '', telefono: '', email: '', rol: '', clave: '' };
+            this.errores = {};
+            this.eliminarFoto = false;
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+            new bootstrap.Modal(document.getElementById('modalUsuario')).show();
+        },
+        editarUsuario(usuario) {
+            this.modalTitulo = "Editar Usuario";
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+            this.form = { ...usuario };
+            this.form.rol = usuario.rol; // asegurar que el rol esté correctamente asignado
+            this.form.avatar = usuario.avatarRelativePath;
+            this.eliminarFoto = false;
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalUsuario')).show();
+        },
+
+        quitarFoto() {
+            // limpiar preview y file input, y marcar para eliminar en servidor
+            this.form.avatar = null;
+            this.eliminarFoto = true;
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+        },
+        async guardarUsuario() {
+            const formData = new FormData();
+            formData.append('IdUsuario', this.form.idUsuario);
+            formData.append('Nombre', this.form.nombre);
+            formData.append('Apellido', this.form.apellido);
+            formData.append('Dni', this.form.dni);
+            formData.append('Telefono', this.form.telefono);
+            formData.append('Email', this.form.email);
+            formData.append('Rol', this.form.rol);
+            formData.append('ClaveHash', this.form.clave);
+            // indicar si se solicitó eliminar la foto actual
+            formData.append('EliminarFoto', this.eliminarFoto ? 'true' : 'false');
+
+            // incluir token antiforgery
+            const tokenInput = document.querySelector('#modalUsuario input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : null;
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            // agregar foto si se seleccionó (clave 'foto' para que el parámetro IFormFile? foto bindee)
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput && fotoInput.files.length > 0) {
+                formData.append('foto', fotoInput.files[0]);
+            }
+
+            try {
+                console.log('Enviando datos del formulario:', {
+                    idUsuario: this.form.idUsuario,
+                    nombre: this.form.nombre,
+                    apellido: this.form.apellido,
+                    dni: this.form.dni,
+                    telefono: this.form.telefono,
+                    email: this.form.email,
+                    rol: this.form.rol,
+                    clave: this.form.clave,
+                    eliminarFoto: this.eliminarFoto,
+                    fotoSeleccionada: fotoInput && fotoInput.files.length > 0 ? fotoInput.files[0].name : 'Ninguna'
+                });
+
+                const response = await fetch('/Usuarios/Guardar', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // cerrar modal
+                    const modalEl = document.getElementById('modalUsuario');
+                    const inst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    inst.hide();
+                    // recargar tabla
+                    this.cargarUsuarios(this.paginaActual);
+                } else {
+                    // mostrar errores de validación
+                    this.errores = data.errors || {};
+                }
+            } catch (error) {
+                console.error('Error al guardar el usuario:', error);
+                alert('Ocurrió un error al guardar el usuario. Revisa la consola.');
+            }
+        },
+        cambiarEstado(usuario, activo) {
+            fetch('/Usuarios/CambiarEstado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ id: usuario.idUsuario, estado: activo })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.cargarUsuarios(this.paginaActual);
+                } else {
+                    alert('No se pudo cambiar el estado del usuario.');
+                }
+            })
+            .catch(err => {
+                console.error('cambiarEstado error:', err);
+                alert('Ocurrió un error al cambiar el estado. Revisa la consola.');
+            });
+        }
     }
+}).mount('#app');
+</script>
 }

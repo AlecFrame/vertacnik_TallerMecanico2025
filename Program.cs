@@ -8,6 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UsuarioRepo>();
 builder.Services.AddScoped<ClienteRepo>();
+builder.Services.AddScoped<VehiculoRepo>();
+builder.Services.AddScoped<RepuestoRepo>();
+builder.Services.AddScoped<TipoServicioRepo>();
+builder.Services.AddScoped<PedidoRepo>();
+builder.Services.AddScoped<ServicioRepo>();
+builder.Services.AddScoped<DetalleRepuestoRepo>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

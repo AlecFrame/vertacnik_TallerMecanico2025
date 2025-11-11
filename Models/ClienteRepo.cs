@@ -171,5 +171,38 @@ namespace vertacnik_TallerMecanico2025.Models
             return (lista, total);
         }
 
+        public IList<Cliente> BuscarPorNombreODni(string query)
+        {
+            IList<Cliente> lista = new List<Cliente>();
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+                string sql = "SELECT * FROM clientes " +
+                             "WHERE Nombre LIKE @Query OR Apellido LIKE @Query OR Dni LIKE @Query";
+                using (MySqlCommand command = new MySqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@Query", $"%{query}%");
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Cliente cliente = new Cliente
+                            {
+                                IdCliente = reader.GetInt32("IdCliente"),
+                                Dni = reader.GetString("Dni"),
+                                Nombre = reader.GetString("Nombre"),
+                                Apellido = reader.GetString("Apellido"),
+                                Email = reader.GetString("Email"),
+                                Telefono = reader.GetString("Telefono"),
+                                Estado = reader.GetBoolean("Estado")
+                            };
+                            lista.Add(cliente);
+                        }
+                    }
+                }
+            }
+            return lista;
+        }
+
     }
 }

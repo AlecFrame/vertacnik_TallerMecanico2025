@@ -21,80 +21,7 @@ public class UsuariosController : Controller
 
     public IActionResult Index()
     {
-        var lista = _repo.ObtenerTodos();
-
-        if (TempData.ContainsKey("UsuarioConErrores"))
-        {
-            var usuarioJson = TempData["UsuarioConErrores"]?.ToString();
-            var erroresJson = TempData["ErroresValidacion"]?.ToString();
-
-            if (!string.IsNullOrEmpty(usuarioJson))
-            {
-                var usuarioConErrores = System.Text.Json.JsonSerializer.Deserialize<Usuario>(usuarioJson);
-                ViewBag.UsuarioConErrores = usuarioConErrores;
-                // Si también tenemos errores, reconstruir ModelState con ellos para renderizar el partial con mensajes
-                if (!string.IsNullOrEmpty(erroresJson))
-                {
-                    var errores = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, List<string>>>(erroresJson);
-                    if (errores != null)
-                    {
-                        // limpiar ModelState actual y poblar con los errores almacenados
-                        ModelState.Clear();
-                        foreach (var kv in errores)
-                        {
-                            foreach (var msg in kv.Value)
-                            {
-                                // Las claves deben coincidir con los nombres de los inputs (p.ej. "Nombre")
-                                ModelState.AddModelError(kv.Key, msg);
-                            }
-                        }
-
-                        // Renderizar el partial en el servidor con el modelo y ModelState poblado
-                        try
-                        {
-                            var html = RenderPartialViewToString("_FormularioUsuario", usuarioConErrores);
-                            ViewBag.ModalHtml = html;
-                        }
-                        catch
-                        {
-                            ViewBag.ModalHtml = null;
-                        }
-                    }
-                }
-            }
-
-            // Si no se renderizó el partial, mantener los errores en ViewBag por compatibilidad
-            if (ViewBag.ModalHtml == null && !string.IsNullOrEmpty(erroresJson))
-            {
-                var errores = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, List<string>>>(erroresJson);
-                ViewBag.ErroresValidacion = errores;
-            }
-        }
-
-        return View(lista);
-    }
-
-    // Helper para renderizar un partial a string (usa el ModelState actual)
-    private string RenderPartialViewToString(string viewName, object model)
-    {
-        var viewEngine = HttpContext.RequestServices.GetService(typeof(Microsoft.AspNetCore.Mvc.ViewEngines.ICompositeViewEngine)) as Microsoft.AspNetCore.Mvc.ViewEngines.ICompositeViewEngine;
-        var tempDataProvider = HttpContext.RequestServices.GetService(typeof(Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider)) as Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider;
-        var actionContext = new ActionContext(HttpContext, RouteData, ControllerContext.ActionDescriptor);
-
-        if (viewEngine == null || tempDataProvider == null)
-            return string.Empty;
-
-        using (var sw = new StringWriter())
-        {
-            var viewResult = viewEngine.FindView(actionContext, viewName, false);
-            if (!viewResult.Success)
-                return string.Empty;
-
-            var viewDictionary = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(new Microsoft.AspNetCore.Mvc.ModelBinding.EmptyModelMetadataProvider(), ModelState) { Model = model };
-            var viewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext(actionContext, viewResult.View, viewDictionary, new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(HttpContext, tempDataProvider), sw, new Microsoft.AspNetCore.Mvc.ViewFeatures.HtmlHelperOptions());
-            viewResult.View.RenderAsync(viewContext).GetAwaiter().GetResult();
-            return sw.ToString();
-        }
+        return View();
     }
 
     [HttpPost]
@@ -102,7 +29,10 @@ public class UsuariosController : Controller
     public IActionResult Guardar(Usuario usuario, IFormFile? foto)
     {
         // Leer el valor raw que vino en el formulario (si vino)
-        var claveRaw = Request.Form["Clave"].ToString();
+        var claveRaw = Request.Form["ClaveHash"].ToString();
+
+        Console.WriteLine("Clave raw recibida: " + claveRaw);
+        Console.WriteLine("Clave model state: " + usuario.ClaveHash);
 
         // Si estamos editando y no se ingresó clave nueva, mantener la clave existente
         Usuario? usuarioExistente = null;
@@ -187,11 +117,19 @@ public class UsuariosController : Controller
         }
         else
         {
-            // Si es AJAX, devolver los errores de validación en JSON
+            // Si es AJAX, devolver los errores de validación en JSON (por campo)
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return Json(new { success = false, errors });
+                var errorDict = new Dictionary<string, List<string>>();
+                foreach (var kv in ModelState.Where(kv => kv.Value.Errors != null && kv.Value.Errors.Count > 0))
+                {
+                    // tomar sólo el nombre de la propiedad (p.ej. "Nombre" en vez de "usuario.Nombre")
+                    var key = kv.Key;
+                    if (key.Contains('.')) key = key.Substring(key.LastIndexOf('.') + 1);
+                    var list = kv.Value.Errors.Select(e => e.ErrorMessage).ToList();
+                    errorDict[key] = list;
+                }
+                return Json(new { success = false, errors = errorDict });
             }
             else
             {
@@ -211,16 +149,6 @@ public class UsuariosController : Controller
         }
     }
 
-    public IActionResult Crear()
-    {
-        return PartialView("_FormularioUsuario", new Usuario());
-    }
-    public IActionResult Editar(int id)
-    {
-        var usuario = _repo.ObtenerPorId(id);
-        return PartialView("_FormularioUsuario", usuario);
-    }
-
     [HttpPost]
     public IActionResult CambiarEstado(int id, bool activo)
     {
@@ -234,10 +162,18 @@ public class UsuariosController : Controller
         return RedirectToAction("Index");
     }
 
-    public IActionResult CargarTabla()
+    [HttpGet]
+    public IActionResult GetAll()
     {
         var lista = _repo.ObtenerTodos();
-        return PartialView("_TablaUsuarios", lista);
+        return Json(lista);
+    }
+
+    [HttpGet]
+    public IActionResult GetPaged(int pagina = 1, int tamanioPagina = 10)
+    {
+        var (lista, total) = _repo.ObtenerPaginado(pagina, tamanioPagina);
+        return Json(new { data = lista, total });
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

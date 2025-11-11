@@ -32,10 +32,15 @@ body {
 
 /* Cosas personalizadas */
 
+table td {
+  text-align-last: center;
+}
+
 table td,
 table th {
     text-align: center;
     justify-items: center;
+    justify-content: center;
 }
 
 .user-perfil-avatar {

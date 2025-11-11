@@ -6,16 +6,16 @@ using Microsoft.AspNetCore.Authorization;
 namespace vertacnik_TallerMecanico2025.Controllers;
 
 [Authorize]
-public class ClientesController : Controller
+public class TipoServiciosController : Controller
 {
-    private readonly ILogger<ClientesController> _logger;
-    private readonly ClienteRepo _repo;
+    private readonly ILogger<TipoServiciosController> _logger;
+    private readonly TipoServicioRepo _repo;
     private readonly IConfiguration _config;
 
-    public ClientesController(IConfiguration config, ILogger<ClientesController> logger)
+    public TipoServiciosController(IConfiguration config, ILogger<TipoServiciosController> logger)
     {
         _config = config;
-        _repo = new ClienteRepo(config);
+        _repo = new TipoServicioRepo(config);
         _logger = logger;
     }
 
@@ -26,17 +26,17 @@ public class ClientesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Guardar(Cliente cliente)
+    public IActionResult Guardar(TipoServicio tipoServicio)
     {
         if (ModelState.IsValid)
         {
-            if (cliente.IdCliente > 0)
+            if (tipoServicio.IdTipoServicio > 0)
             {
-                _repo.Modificacion(cliente);
+                _repo.Modificacion(tipoServicio);
             }
             else
             {
-                _repo.Alta(cliente);
+                _repo.Alta(tipoServicio);
             }
             // Si es AJAX, devolver JSON, si no, redirigir
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -97,13 +97,13 @@ public class ClientesController : Controller
         if (string.IsNullOrWhiteSpace(q))
             return Json(new List<object>());
 
-        var verificarSiFunciona = _repo.BuscarPorNombreODni(q);
+        var verificarSiFunciona = _repo.BuscarPorNombre(q);
 
-        var resultados = _repo.BuscarPorNombreODni(q)
-            .Select(c => new
+        var resultados = _repo.BuscarPorNombre(q)
+            .Select(t => new
             {
-                idCliente = c.IdCliente,
-                nombreCompleto = $"{c.Nombre} {c.Apellido} ({c.Dni})"
+                idCliente = t.IdTipoServicio,
+                nombre = $"{t.Nombre}"
             }).ToList();
 
         return Json(resultados);

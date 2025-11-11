@@ -42,13 +42,41 @@ namespace vertacnik_TallerMecanico2025.Models
 
         public Cliente? Cliente { get; set; }
 
-        public string DescripcionCompleta()
+        [NotMapped]
+        public string DuenoNombre
         {
-            if (Cliente != null)
+            get { return Cliente != null ? Cliente.NombreCompleto : "Desconocido"; }
+        }
+
+        [NotMapped]
+        public string FotoRelativePath
+        {
+            get
             {
-                return $"{Marca} {Modelo} {Color} ({Anio}) - Patente: {Patente} - Dueño: {Cliente.NombreCompleto}";
+                return !string.IsNullOrEmpty(Foto) ? Foto.Replace('~', ' ').Trim() : string.Empty;
             }
-            return $"{Marca} {Modelo} {Color} ({Anio}) - Patente: {Patente}";
+        }
+
+        [NotMapped]
+        public string DescripcionCorta
+        {
+            get
+            {
+                return $"{Patente}, {Marca} {Modelo} {Color}";
+            }
+        }
+
+        [NotMapped]
+        public string DescripcionCompleta
+        {
+            get
+            {
+                if (Cliente != null)
+                {
+                    return $"{Marca} {Modelo} {Color} ({Anio}) - Patente: {Patente} - Dueño: {Cliente.NombreCompleto}";
+                }
+                return $"{Marca} {Modelo} {Color} ({Anio}) - Patente: {Patente}";
+            }
         }
     }
 }

@@ -22,5 +22,14 @@ namespace vertacnik_TallerMecanico2025.Models
 
         public Servicio? Servicio { get; set; }
         public Repuesto? Repuesto { get; set; }
+
+        [NotMapped]
+        public decimal Total
+        {
+            get
+            {
+                return Repuesto != null ? Repuesto.CostoRepuestoBase * Cantidad : 0;
+            }
+        }
     }
 }

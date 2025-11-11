@@ -1,0 +1,394 @@
+@model IEnumerable<vertacnik_TallerMecanico2025.Models.Pedido>
+
+@{
+    ViewData["Title"] = "Pedidos";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+    [v-cloak] { display: none; }
+</style>
+
+<div id="app" v-cloak class="container-fluid taller-container-table">
+    <div class="text-center">
+        <h2>Gestión de Pedidos</h2>
+    </div>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Cliente</th>
+                <th>Vehiculo</th>
+                <th>Fecha de ingreso</th>
+                <th>Costo Estimado</th>
+                <th>Costo Final</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="pedido in pedidos" :key="pedido.idPedido">
+                <td>{{ pedido.idPedido }}</td>
+                <td>{{ pedido.vehiculo.duenoNombre }}</td>
+                <td>{{ pedido.vehiculo.descripcionCorta }}</td>
+                <td>{{ new Date(pedido.fechaIngreso).toLocaleDateString() }}</td>
+                <td>{{ pedido.costoEstimado }}</td>
+                <td>{{ obtenerCostoFinal(pedido.costoFinal) }}</td>
+                <td>{{ obtenerNombreEstado(pedido.estado) }}</td>
+                <td class="d-flex gap-2">
+                    <button class="btn btn-sm btn-info" @@click="detallePedido(pedido)">Ver Detalle</button>
+                    <button v-if="pedido.sePuedeEditar" class="btn btn-sm btn-primary" @@click="editarPedido(pedido)">Editar</button>
+                    <button v-if="pedido.sePuedeEditar" class="btn btn-sm btn-danger" @@click="cancelarPedido(pedido, true)">Cancelar</button>
+                    <button v-if="pedido.sePuedeActivar" class="btn btn-sm btn-success" @@click="cancelarPedido(pedido, false)">Activar</button>
+                </td>
+            </tr>
+            <tr v-if="pedidos.length === 0">
+                <td colspan="10" class="text-center">No hay pedidos registrados.</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="10" class="text-end">
+                    <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- Paginación -->
+    <div class="text-center">
+        <button class="btn btn-secondary me-2" 
+                :disabled="paginaActual === 1" 
+                @@click="cargarPedidos(paginaActual - 1)">Anterior</button>
+
+        <span>Página {{ paginaActual }} de {{ paginasTotales() }}</span>
+
+        <button class="btn btn-secondary ms-2" 
+                :disabled="paginaActual === paginasTotales()" 
+                @@click="cargarPedidos(paginaActual + 1)">Siguiente</button>
+    </div>
+
+    <!-- Modal de Pedido -->
+    <div class="modal fade" id="modalPedido" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form  @@submit.prevent="guardarPedido()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Cliente -->
+                        <div class="mb-3 position-relative">
+                            <label>Cliente</label>
+                            <input type="text" v-model="busquedaCliente" 
+                                    @@input="buscarClientes"
+                                    placeholder="Buscar cliente por nombre o DNI" 
+                                    class="form-control" autocomplete="off">
+
+                            <!-- lista desplegable -->
+                            <ul v-if="resultadosClientes.length > 0" 
+                                class="list-group position-absolute w-100" 
+                                style="z-index: 1000; max-height: 150px; overflow-y: auto;">
+                                <li v-for="cliente in resultadosClientes"
+                                    :key="cliente.IdCliente"
+                                    class="list-group-item list-group-item-action"
+                                    @@click="seleccionarCliente(cliente)">
+                                {{ cliente.NombreCompleto }}
+                                </li>
+                            </ul>
+
+                            <!-- campo oculto para enviar -->
+                            <input type="hidden" name="IdCliente" :value="selectedCliente ? selectedCliente.IdCliente : 0">
+
+                            <div v-if="selectedCliente" class="mt-2 text-success">
+                                <small>Seleccionado: {{ selectedCliente.NombreCompleto }}</small>
+                            </div>
+                        </div>
+                        <!-- Vehiculo del Cliente -->
+                        <div class="mb-3 position-relative" v-if="selectedCliente">
+                            <label>Vehículos del Cliente</label>
+                            <input type="text" v-model="busquedaVehiculo" 
+                                    @@input="buscarVehiculos"
+                                    placeholder="Buscar vehiculo por patente, marca, modelo o color" 
+                                    class="form-control" autocomplete="off">
+
+                            <!-- lista desplegable -->
+                            <ul v-if="resultadosVehiculos.length > 0" 
+                                class="list-group position-absolute w-100" 
+                                style="z-index: 1000; max-height: 150px; overflow-y: auto;">
+                                <li v-for="vehiculo in resultadosVehiculos"
+                                    :key="vehiculo.IdVehiculo"
+                                    class="list-group-item list-group-item-action"
+                                    @@click="seleccionarVehiculo(vehiculo)">
+                                {{ vehiculo.DescripcionCorta }}
+                                </li>
+                            </ul>
+
+                            <!-- campo oculto para enviar -->
+                            <input type="hidden" name="IdVehiculo" :value="selectedVehiculo ? selectedVehiculo.IdVehiculo : 0">
+
+                            <div v-if="selectedVehiculo" class="mt-2 text-success">
+                                <small>Seleccionado: {{ selectedVehiculo.DescripcionCorta }}</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Observación del Cliente</label>
+                            <input v-model="form.observacionCliente" name="ObservacionCliente" class="form-control">
+                            <div v-if="errores.ObservacionCliente" class="text-danger">{{ errores.ObservacionCliente[0] }}</div>
+                        </div>
+                        <input type="hidden" name="IdPedido" :value="form.idPedido" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarPedido()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            pedidos: [],
+            form: {
+                idPedido: 0,
+                idCliente: 0,
+                idVehiculo: 0,
+                observacionCliente: ''
+            },
+            modalTitulo: '',
+            errores: {},
+            paginaActual: 1,
+            tamanioPagina: 10,
+            totalRegistros: 0,
+
+            busquedaCliente: '',
+            resultadosClientes: [],
+            selectedCliente: null,
+            busquedaTimer: null,
+
+            busquedaVehiculo: '',
+            resultadosVehiculos: [],
+            selectedVehiculo: null
+        };
+    },
+    mounted() {
+        this.cargarPedidos();
+    },
+    methods: {
+        cargarPedidos(pagina = 1) {
+            fetch(`/Pedidos/GetPaged?pagina=${pagina}&tamanioPagina=${this.tamanioPagina}`)
+            .then(res => res.json())
+            .then(data => {
+                this.pedidos = data.data;
+                this.totalRegistros = data.total;
+                this.paginaActual = pagina;
+            });
+        },
+        obtenerCostoFinal(costoFinal) {
+            if (costoFinal!=null) {
+                return costoFinal;
+            }else {
+                return 'Aún no cargado';
+            }
+        },
+        obtenerNombreEstado(valor) {
+            switch (valor) {
+            case 1: return 'Pendiente';
+            case 2: return 'En proceso';
+            case 3: return 'Finalizado';
+            case 4: return 'Pagado';
+            case 5: return 'Cancelado';
+            default: return 'Desconocido';
+            }
+        },
+        paginasTotales() {
+            return Math.max(Math.ceil(this.totalRegistros / this.tamanioPagina), 1);
+        },
+        abrirModalNuevo() {
+            this.modalTitulo = "Nuevo Pedido";
+            this.form = { idPedido: 0, idCliente: 0, idVehiculo: 0, observacionCliente: '' };
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalPedido')).show();
+        },
+        editarPedido(pedido) {
+            this.modalTitulo = "Editar Pedido";
+            this.form = { ...pedido };
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalPedido')).show();
+        },
+        async guardarPedido() {
+            try {
+                console.group('🟦 [guardarPedido] Iniciando envío de pedido');
+
+                // Obtener token antiforgery
+                const tokenInput = document.querySelector('#modalPedido input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : null;
+                console.log('🔑 Token antiforgery:', token);
+
+                // Construir FormData manualmente
+                const fd = new FormData();
+                fd.append('IdPedido', this.form.idPedido || 0);
+                fd.append('IdVehiculo', this.selectedVehiculo ? this.selectedVehiculo.IdVehiculo : this.form.IdVehiculo);
+                fd.append('ObservacionCliente', this.form.observacionCliente || '');
+                if (token) fd.append('__RequestVerificationToken', token);
+
+                // Mostrar contenido del FormData
+                console.groupCollapsed('📦 Contenido FormData');
+                for (let [key, value] of fd.entries()) {
+                    console.log(`${key}:`, value);
+                }
+                console.groupEnd();
+
+                // Enviar al servidor
+                console.log('🚀 Enviando solicitud POST a /Pedidos/Guardar...');
+                const res = await fetch('/Pedidos/Guardar', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+
+                console.log('📥 Respuesta HTTP recibida:', res.status, res.statusText);
+                console.groupCollapsed('📄 Headers de respuesta');
+                for (let [key, val] of res.headers.entries()) console.log(`${key}: ${val}`);
+                console.groupEnd();
+
+                // Intentar leer como JSON
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    console.error('⚠️ Error al parsear JSON:', parseErr);
+                    const text = await res.text();
+                    console.log('🧾 Respuesta como texto:', text);
+                    throw new Error('No se pudo parsear JSON');
+                }
+
+                console.groupCollapsed('📊 Datos JSON recibidos');
+                console.log(data);
+                console.groupEnd();
+
+                // Evaluar resultado
+                if (data.success) {
+                    console.log('✅ Pedido guardado con éxito');
+                    this.errores = {}; // limpiar errores
+                    this.cargarPedidos();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalPedido'));
+                    if (modal) modal.hide();
+                } else if (data.errors) {
+                    console.warn('⚠️ Errores del servidor:', data.errors);
+                    this.errores = data.errors; // guardar errores
+                } else {
+                    console.error('❌ Respuesta inesperada:', data);
+                    alert('Error al guardar el pedido');
+                }
+            } catch (err) {
+                console.error('💥 Error en guardarPedido:', err);
+                alert('Ocurrió un error al guardar. Revisa la consola.');
+            } finally {
+                console.groupEnd();
+            }
+        },
+        cancelarPedido(pedido, activo) {
+            fetch(`/Pedidos/CancelarPedido?id=${pedido.idPedido}&activo=${activo}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.cargarPedidos();
+                } else {
+                    alert("No se pudo cambiar el estado");
+                }
+            });
+        },
+        buscarClientes() {
+            clearTimeout(this.busquedaTimer);
+            if (!this.busquedaCliente || this.busquedaCliente.length < 2) {
+                this.resultadosClientes = [];
+                return;
+            }
+
+            // pequeño delay para no hacer fetch en cada tecla
+            this.busquedaTimer = setTimeout(() => {
+                fetch(`/Clientes/Search?q=${encodeURIComponent(this.busquedaCliente)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                                                // mapear a { IdCliente, NombreCompleto } (aceptar tanto PascalCase como camelCase devuelto por el servidor)
+                                                this.resultadosClientes = Array.isArray(data)
+                                                        ? data.map(c => ({
+                                                                IdCliente: c.IdCliente ?? c.idCliente ?? null,
+                                                                NombreCompleto: c.NombreCompleto ?? c.nombreCompleto ?? ''
+                                                            }))
+                                                        : [];
+                    })
+                    .catch(err => {
+                        console.error('Error buscando clientes:', err);
+                        this.resultadosClientes = [];
+                    });
+            }, 300);
+        },
+        seleccionarCliente(cliente) {
+            // cliente: { IdCliente, NombreCompleto }
+            this.selectedCliente = { IdCliente: cliente.IdCliente, NombreCompleto: cliente.NombreCompleto };
+            this.busquedaCliente = cliente.NombreCompleto;
+            this.resultadosClientes = [];
+        },
+        buscarVehiculos() {
+            clearTimeout(this.busquedaTimer);
+            if (!this.busquedaVehiculo || this.busquedaVehiculo.length < 2) {
+                this.resultadosVehiculos = [];
+                return;
+            }
+
+            // pequeño delay para no hacer fetch en cada tecla
+            this.busquedaTimer = setTimeout(() => {
+                fetch(`/Vehiculos/Search?idCliente=${this.selectedCliente.IdCliente}&q=${encodeURIComponent(this.busquedaVehiculo)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        // mapear a { IdVehiculo, DescripcionCorta }
+                        this.resultadosVehiculos = Array.isArray(data)
+                            ? data.map(v => ({
+                                IdVehiculo: v.idVehiculo ?? v.IdVehiculo ?? null,
+                                DescripcionCorta: v.descripcionCorta ?? v.DescripcionCorta ?? ''
+                            }))
+                            : [];
+                    })
+                    .catch(err => {
+                        console.error('Error buscando vehiculos:', err);
+                        this.resultadosVehiculos = [];
+                    });
+            }, 300);
+        },
+        seleccionarVehiculo(vehiculo) {
+            // vehiculo: { IdVehiculo, DescripcionCorta }
+            this.selectedVehiculo = { IdVehiculo: vehiculo.IdVehiculo, DescripcionCorta: vehiculo.DescripcionCorta };
+            this.busquedaVehiculo = vehiculo.DescripcionCorta;
+            this.resultadosVehiculos = [];
+        },
+        detallePedido(pedido) {
+            if (!pedido || !pedido.idPedido) {
+                console.error('No se proporcionó un pedido válido:', pedido);
+                return;
+            }
+            console.log('Redirigiendo a detalle del pedido', pedido.idPedido);
+            // redirigir al controlador
+            window.location.href = `/Pedidos/DetallePedido/${pedido.idPedido}`;
+        }
+    }
+}).mount('#app');
+</script>
+}

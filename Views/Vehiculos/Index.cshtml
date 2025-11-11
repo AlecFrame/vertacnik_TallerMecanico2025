@@ -1,0 +1,381 @@
+@model IEnumerable<vertacnik_TallerMecanico2025.Models.Vehiculo>
+
+@{
+    ViewData["Title"] = "Vehículos";
+}
+
+<style>
+    body {
+        background: radial-gradient(circle, #18181c 20%, #2a2733);
+    }
+    [v-cloak] { display: none; }
+</style>
+
+<div id="app" v-cloak class="container-fluid taller-container-table">
+    <div class="text-center">
+        <h2>Gestión de Vehiculos</h2>
+    </div>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Foto</th>
+                <th>Patente</th>
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>Año</th>
+                <th>Color</th>
+                <th>Dueño</th>
+                <th>En el taller</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="vehiculo in vehiculos" :key="vehiculo.IdVehiculo">
+                <td>{{ vehiculo.idVehiculo }}</td>
+                <td>
+                    <img v-if="vehiculo.foto" :src="vehiculo.fotoRelativePath" alt="Foto del vehículo" class="rounded-circle user-perfil-foto" style="width: 32px; height: 32px;" />
+                    <div v-else class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center user-perfil-foto" style="width: 32px; height: 32px;">
+                        ?
+                    </div>
+                </td>
+                <td>{{ vehiculo.patente }}</td>
+                <td>{{ vehiculo.marca }}</td>
+                <td>{{ vehiculo.modelo }}</td>
+                <td>{{ vehiculo.anio }}</td>
+                <td>{{ vehiculo.color }}</td>
+                <td>{{ vehiculo.duenoNombre }}</td>
+                <td>
+                    <span v-if="vehiculo.enElTaller" class="badge bg-success" style="padding: 10px;">Está</span>
+                    <span v-else class="badge bg-secondary" style="padding: 10px;">No Está</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary" @@click="editarVehiculo(vehiculo)">Editar</button>
+                </td>
+            </tr>
+            <tr v-if="vehiculos.length === 0">
+                <td colspan="10" class="text-center">No hay vehiculos registrados.</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="10" class="text-end">
+                    <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- Paginación -->
+    <div class="text-center">
+        <button class="btn btn-secondary me-2" 
+                :disabled="paginaActual === 1" 
+                @@click="cargarVehiculos(paginaActual - 1)">Anterior</button>
+
+        <span>Página {{ paginaActual }} de {{ paginasTotales() }}</span>
+
+        <button class="btn btn-secondary ms-2" 
+                :disabled="paginaActual === paginasTotales()" 
+                @@click="cargarVehiculos(paginaActual + 1)">Siguiente</button>
+    </div>
+
+    <!-- Modal de Vehículo -->
+    <div class="modal fade" id="modalVehiculo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form  @@submit.prevent="guardarVehiculo()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="IdVehiculo" :value="form.idVehiculo" />
+                        <!--  Foto del Vehículo -->
+                        <div class="mb-3 text-center">
+                            <div id="fotoPreview" class="rounded-circle text-white d-inline-flex justify-content-center align-items-center"
+                                style="width:100px;height:100px;font-size:36px;overflow:hidden;background-color:#9e59be;">
+                                <img v-if="form.foto" :src="form.foto" alt="Foto del vehículo" class="w-100 h-100" style="object-fit: cover;" />
+                                <span v-else>?</span>
+                            </div>
+                            <br />
+                            <div class="d-flex gap-2 justify-content-center" style="flex-direction: column;">
+                                <input type="file" id="fotoInput" name="foto" class="form-control mt-2" accept="image/*" @@change="previsualizarFoto" />
+                                <button type="button" class="btn btn-outline-danger mt-2" @@click="quitarFoto">Quitar foto</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Patente</label>
+                            <input v-model="form.patente" name="Patente" class="form-control">
+                            <div v-if="errores.Patente" class="text-danger">{{ errores.Patente[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Marca</label>
+                            <input v-model="form.marca" name="Marca" class="form-control">
+                            <div v-if="errores.Marca" class="text-danger">{{ errores.Marca[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Modelo</label>
+                            <input v-model="form.modelo" name="Modelo" class="form-control">
+                            <div v-if="errores.Modelo" class="text-danger">{{ errores.Modelo[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Año</label>
+                            <input v-model="form.anio" name="Anio" type="number" class="form-control">
+                            <div v-if="errores.Anio" class="text-danger">{{ errores.Anio[0] }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Color</label>
+                            <input v-model="form.color" name="Color" class="form-control">
+                            <div v-if="errores.Color" class="text-danger">{{ errores.Color[0] }}</div>
+                        </div>
+                        <!-- Dueño del Vehículo -->
+                        <div class="mb-3 position-relative">
+                            <label>Dueño</label>
+                            <input type="text" v-model="busquedaCliente" 
+                                    @@input="buscarClientes"
+                                    placeholder="Buscar cliente por nombre o DNI" 
+                                    class="form-control" autocomplete="off">
+
+                            <!-- lista desplegable -->
+                            <ul v-if="resultadosClientes.length > 0" 
+                                class="list-group position-absolute w-100" 
+                                style="z-index: 1000; max-height: 150px; overflow-y: auto;">
+                                <li v-for="cliente in resultadosClientes"
+                                    :key="cliente.IdCliente"
+                                    class="list-group-item list-group-item-action"
+                                    @@click="seleccionarCliente(cliente)">
+                                {{ cliente.NombreCompleto }}
+                                </li>
+                            </ul>
+
+                            <!-- campo oculto para enviar -->
+                            <input type="hidden" name="IdCliente" :value="selectedCliente ? selectedCliente.IdCliente : 0">
+
+                            <div v-if="selectedCliente" class="mt-2 text-success">
+                                <small>Seleccionado: {{ selectedCliente.NombreCompleto }}</small>
+                            </div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" v-model="form.estado" name="EnElTaller" class="form-check-input" id="estadoCheck">
+                            <label class="form-check-label" for="estadoCheck">¿Está en el taller?</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarVehiculo()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            vehiculos: [],
+            form: {
+                idVehiculo: 0,
+                foto: null,
+                patente: '',
+                marca: '',
+                modelo: '',
+                anio: '',
+                color: '',
+                idCliente: 0,
+                estado: false
+            },
+                eliminarFoto: false,
+            modalTitulo: '',
+            errores: {},
+            paginaActual: 1,
+            tamanioPagina: 10,
+            totalRegistros: 0,
+            busquedaCliente: '',
+            resultadosClientes: [],
+            selectedCliente: null,
+            busquedaTimer: null
+        };
+    },
+    mounted() {
+        this.cargarVehiculos();
+    },
+    methods: {
+        cargarVehiculos(pagina = 1) {
+            fetch(`/Vehiculos/GetPaged?pagina=${pagina}&tamanioPagina=${this.tamanioPagina}`)
+            .then(res => res.json())
+            .then(data => {
+                // soportar varias formas de respuesta: { items, totalRegistros }, { data, total }, o directamente un array
+                const items = data.items ?? data.data ?? data.lista ?? data;
+                const total = data.totalRegistros ?? data.total ?? (Array.isArray(items) ? items.length : 0);
+                this.vehiculos = Array.isArray(items) ? items : [];
+                this.totalRegistros = Number.isFinite(total) ? total : (this.vehiculos.length || 0);
+                this.paginaActual = pagina;
+            })
+            .catch(err => {
+                console.error('Error cargando vehículos:', err);
+                this.vehiculos = [];
+                this.totalRegistros = 0;
+            });
+        },
+        paginasTotales() {
+            return Math.max(Math.ceil(this.totalRegistros / this.tamanioPagina), 1);
+        },
+        buscarClientes() {
+            clearTimeout(this.busquedaTimer);
+            if (!this.busquedaCliente || this.busquedaCliente.length < 2) {
+                this.resultadosClientes = [];
+                return;
+            }
+
+            // pequeño delay para no hacer fetch en cada tecla
+            this.busquedaTimer = setTimeout(() => {
+                fetch(`/Clientes/Search?q=${encodeURIComponent(this.busquedaCliente)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                                                // mapear a { IdCliente, NombreCompleto } (aceptar tanto PascalCase como camelCase devuelto por el servidor)
+                                                this.resultadosClientes = Array.isArray(data)
+                                                        ? data.map(c => ({
+                                                                IdCliente: c.IdCliente ?? c.idCliente ?? null,
+                                                                NombreCompleto: c.NombreCompleto ?? c.nombreCompleto ?? ''
+                                                            }))
+                                                        : [];
+                    })
+                    .catch(err => {
+                        console.error('Error buscando clientes:', err);
+                        this.resultadosClientes = [];
+                    });
+            }, 300);
+        },
+        seleccionarCliente(cliente) {
+            // cliente: { IdCliente, NombreCompleto }
+            this.selectedCliente = { IdCliente: cliente.IdCliente, NombreCompleto: cliente.NombreCompleto };
+            this.busquedaCliente = cliente.NombreCompleto;
+            this.resultadosClientes = [];
+        },
+        previsualizarFoto(e) {
+            const input = e.target || document.getElementById('fotoInput');
+            if (!input || !input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                // colocar la imagen en el preview (data URL)
+                this.form.foto = ev.target.result;
+                // al seleccionar una nueva foto, cancelar el flag de eliminar
+                this.eliminarFoto = false;
+            };
+            reader.readAsDataURL(file);
+        },
+        abrirModalNuevo() {
+            this.modalTitulo = "Nuevo Vehículo";
+            this.form = { idVehiculo: 0, foto: null, patente: '', marca: '', modelo: '', anio: '', color: '', idCliente: 0, estado: false };
+            this.errores = {};
+            this.selectedCliente = null;
+            this.eliminarFoto = false;
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+            new bootstrap.Modal(document.getElementById('modalVehiculo')).show();
+        },
+        editarVehiculo(vehiculo) {
+            this.modalTitulo = "Editar Vehículo";
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+            this.form = { ...vehiculo };
+            this.form.foto = vehiculo.fotoRelativePath;
+            this.eliminarFoto = false;
+            this.form.estado = vehiculo.enElTaller.toString() === 'true' || vehiculo.enElTaller === true;
+            this.errores = {};
+            if (this.form.IdCliente) {
+                // crear una opción temporal con el nombre ya conocido
+                this.selectedCliente = { IdCliente: this.form.IdCliente, NombreCompleto: this.form.duenoNombre || 'Cargando...' };
+                this.clienteOptions = [ this.selectedCliente ];
+            }
+            new bootstrap.Modal(document.getElementById('modalVehiculo')).show();
+        },
+
+        quitarFoto() {
+            // limpiar preview y file input, y marcar para eliminar en servidor
+            this.form.foto = null;
+            this.eliminarFoto = true;
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+        },
+        async guardarVehiculo() {
+            const formData = new FormData();
+            formData.append('IdVehiculo', this.form.idVehiculo);
+            formData.append('Patente', this.form.patente);
+            formData.append('Marca', this.form.marca);
+            formData.append('Modelo', this.form.modelo);
+            formData.append('Anio', this.form.anio);
+            formData.append('Color', this.form.color);
+            formData.append('IdCliente', this.selectedCliente ? this.selectedCliente.IdCliente : this.form.idCliente);
+            // indicar si se solicitó eliminar la foto actual
+            formData.append('EliminarFoto', this.eliminarFoto ? 'true' : 'false');
+            formData.append('EnElTaller', this.form.estado ? 'true' : 'false');
+
+            // incluir token antiforgery
+            const tokenInput = document.querySelector('#modalVehiculo input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : null;
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            // agregar foto si se seleccionó (clave 'foto' para que el parámetro IFormFile? foto bindee)
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput && fotoInput.files.length > 0) {
+                formData.append('foto', fotoInput.files[0]);
+            }
+
+            try {
+                const response = await fetch('/Vehiculos/Guardar', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // cerrar modal
+                    const modalEl = document.getElementById('modalVehiculo');
+                    const inst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    inst.hide();
+                    // recargar tabla
+                    this.cargarVehiculos(this.paginaActual);
+                } else {
+                    // mostrar errores de validación
+                    this.errores = data.errors || {};
+                }
+            } catch (error) {
+                console.error('Error al guardar el vehículo:', error);
+                alert('Ocurrió un error al guardar el vehículo. Revisa la consola.');
+            }
+        },
+        cambiarEstado(vehiculo, activo) {
+            fetch('/Vehiculos/CambiarEstado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ id: vehiculo.idVehiculo, estado: activo })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.cargarVehiculos(this.paginaActual);
+                } else {
+                    alert('No se pudo cambiar el estado del vehículo.');
+                }
+            })
+            .catch(err => {
+                console.error('cambiarEstado error:', err);
+                alert('Ocurrió un error al cambiar el estado. Revisa la consola.');
+            });
+        }
+    }
+}).mount('#app');
+</script>
+}

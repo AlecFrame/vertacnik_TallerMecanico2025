@@ -16,6 +16,9 @@ namespace vertacnik_TallerMecanico2025.Models
         [Required, Display(Name = "Mecánico")]
         public int IdUsuario { get; set; }
 
+        [Required, Display(Name = "Tipo de Servicio")]
+        public int IdTipoServicio { get; set; }
+
         [Required(ErrorMessage = "La Fecha del servicio es obligatoria.")]
         [DataType(DataType.Date)]
         [Display(Name = "Fecha del servicio")]
@@ -26,14 +29,24 @@ namespace vertacnik_TallerMecanico2025.Models
         public string Descripcion { get; set; }
 
         [Required(ErrorMessage = "El Costo del Servicio es obligatorio.")]
-        [Range(0.01, 10000000.00, ErrorMessage = "El costo debe estar entre 0.01 y 10,000,000.00.")]
+        [Range(0, 10000000.00, ErrorMessage = "El costo debe estar entre 0 y 10,000,000.00.")]
         [Display(Name = "Costo Base del servicio")]
         public decimal CostoBase { get; set; }
 
         [DefaultValue(true)]
         public bool Estado { get; set; }
 
+        public TipoServicio? TipoServicio { get; set; }
         public Pedido? Pedido { get; set; }
         public Usuario? Usuario { get; set; }
+
+        [NotMapped]
+        public string TipoServicioNombre
+        {
+            get
+            {
+                return TipoServicio!=null? TipoServicio.Nombre : "Desconocido";
+            }
+        }
     }
 }
