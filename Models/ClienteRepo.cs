@@ -178,7 +178,7 @@ namespace vertacnik_TallerMecanico2025.Models
             {
                 connection.Open();
                 string sql = "SELECT * FROM clientes " +
-                             "WHERE Nombre LIKE @Query OR Apellido LIKE @Query OR Dni LIKE @Query";
+                             "WHERE Estado = 1 AND (Nombre LIKE @Query OR Apellido LIKE @Query OR Dni LIKE @Query)";
                 using (MySqlCommand command = new MySqlCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@Query", $"%{query}%");

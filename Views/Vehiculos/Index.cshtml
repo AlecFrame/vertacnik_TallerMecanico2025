@@ -88,7 +88,7 @@
                     @Html.AntiForgeryToken()
                     <div class="modal-header">
                         <h5 class="modal-title">{{ modalTitulo }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" @@click="closeModal('modalVehiculo')"></button>
                     </div>
                     <div class="modal-body">
                         <input type="hidden" name="IdVehiculo" :value="form.idVehiculo" />
@@ -165,7 +165,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" @@click="guardarVehiculo()">Guardar</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" @@click="closeModal('modalVehiculo')">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -278,6 +278,7 @@ createApp({
             this.form = { idVehiculo: 0, foto: null, patente: '', marca: '', modelo: '', anio: '', color: '', idCliente: 0, estado: false };
             this.errores = {};
             this.selectedCliente = null;
+            this.busquedaCliente = '';
             this.eliminarFoto = false;
             const fotoInput = document.getElementById('fotoInput');
             if (fotoInput) fotoInput.value = '';
@@ -292,11 +293,8 @@ createApp({
             this.eliminarFoto = false;
             this.form.estado = vehiculo.enElTaller.toString() === 'true' || vehiculo.enElTaller === true;
             this.errores = {};
-            if (this.form.IdCliente) {
-                // crear una opción temporal con el nombre ya conocido
-                this.selectedCliente = { IdCliente: this.form.IdCliente, NombreCompleto: this.form.duenoNombre || 'Cargando...' };
-                this.clienteOptions = [ this.selectedCliente ];
-            }
+            this.selectedCliente = { IdCliente: vehiculo.IdCliente, NombreCompleto: vehiculo.duenoNombre };
+            this.busquedaCliente = vehiculo.duenoNombre;
             new bootstrap.Modal(document.getElementById('modalVehiculo')).show();
         },
 
@@ -338,13 +336,13 @@ createApp({
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
 
+                console.log('📥 Respuesta HTTP recibida:', response.status, response.statusText);
+
                 const data = await response.json();
 
                 if (data.success) {
                     // cerrar modal
-                    const modalEl = document.getElementById('modalVehiculo');
-                    const inst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                    inst.hide();
+                    this.closeModal('modalVehiculo');
                     // recargar tabla
                     this.cargarVehiculos(this.paginaActual);
                 } else {
@@ -374,6 +372,11 @@ createApp({
                 console.error('cambiarEstado error:', err);
                 alert('Ocurrió un error al cambiar el estado. Revisa la consola.');
             });
+        },
+        closeModal(modalId) {
+            document.activeElement.blur(); 
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) modal.hide();
         }
     }
 }).mount('#app');

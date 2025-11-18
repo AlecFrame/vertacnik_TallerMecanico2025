@@ -158,16 +158,16 @@ namespace vertacnik_TallerMecanico2025.Models
             return (lista, total);
         }
 
-        public IList<TipoServicio> BuscarPorNombre(string nombre)
+        public IList<TipoServicio> BuscarPorNombreYDescripcion(string query)
         {
             IList<TipoServicio> lista = new List<TipoServicio>();
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
-                string sql = "SELECT * FROM tiposervicios WHERE Nombre LIKE @Nombre";
+                string sql = "SELECT * FROM tiposervicios WHERE Estado = 1 AND (Nombre LIKE @Query OR Descripcion LIKE @Query)";
                 using (MySqlCommand command = new MySqlCommand(sql, connection))
                 {
-                    command.Parameters.AddWithValue("@Nombre", "%" + nombre + "%");
+                    command.Parameters.AddWithValue("@Query", "%" + query + "%");
                     using (MySqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())

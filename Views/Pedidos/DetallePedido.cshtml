@@ -43,8 +43,8 @@
         <div class="card-header">Información del Pedido</div>
         <div class="card-body row">
             <div class="col-md-6">
-                <p><b>Cliente:</b> {{ pedido.vehiculo.duenoNombre }}</p>
-                <p><b>Vehículo:</b> {{ pedido.vehiculo.descripcionCorta }}</p>
+                <p><b>Cliente:</b> {{ vehiculoDuenoNombre() }}</p>
+                <p><b>Vehículo:</b> {{ vehiculoDescripcionCorta() }}</p>
                 <p><b>Fecha ingreso:</b> {{ formatFecha(pedido.fechaIngreso) }}</p>
                 <p><b>Fecha finalización:</b> {{ formatFecha(pedido.fechaFinalizacion) }}</p>
             </div>
@@ -54,7 +54,7 @@
                 <p><b>Estado:</b> 
                     <span :class="['estado', estadoClase(pedido.estado)]">{{ estadoNombre(pedido.estado) }}</span>
                 </p>
-                <p><b>Creado por:</b> {{ pedido.creadoPor }}</p>
+                <p><b>Creado por:</b> {{ creadoPor() }}</p>
             </div>
         </div>
     </div>
@@ -72,7 +72,7 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>Servicios del Pedido</span>
-            <button class="btn btn-sm btn-success" @@click="abrirModalServicio">+ Agregar servicio</button>
+            <button v-if="sePuedeFinalizarPedido()" class="btn btn-sm btn-success" @@click="abrirModalServicio">+ Agregar servicio</button>
         </div>
         <div class="card-body p-0">
             <table class="table table-bordered table-striped">
@@ -94,11 +94,17 @@
                         <td>{{ formatFecha(s.fecha) }}</td>
                         <td>{{ s.descripcion }}</td>
                         <td>${{ s.costoBase }}</td>
-                        <td>{{ s.estado }}</td>
                         <td>
+                            <span v-if="s.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
+                            <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
+                        </td>
+                        <td class="d-flex align-items-center">
                             <button class="btn btn-sm btn-info" @@click="verRepuestos(s)">Repuestos</button>
-                            <button class="btn btn-sm btn-primary" @@click="editarServicio(s)">Editar</button>
-                            <button class="btn btn-sm btn-danger" @@click="eliminarServicio(s)">Eliminar</button>
+                            <div v-if="sePuedeFinalizarPedido()">
+                                <button v-if="sePuedeFinalizarPedido()" class="btn btn-sm btn-primary" @@click="editarServicio(s)">Editar</button>
+                                <button v-if="s.estado" class="btn btn-sm btn-danger" @@click="cambiarEstadoServicio(s, false)">Baja</button>
+                                <button v-else class="btn btn-sm btn-success" @@click="cambiarEstadoServicio(s, true)">Alta</button>
+                            </div>
                         </td>
                     </tr>
                     <tr v-if="servicios.length === 0">
@@ -106,14 +112,30 @@
                     </tr>
                 </tbody>
             </table>
+
+            <!-- Paginación -->
+            <div class="text-center">
+                <button class="btn btn-secondary me-2" 
+                        :disabled="paginaActualServicio === 1" 
+                        @@click="cargarServicios(paginaActualServicio - 1)">Anterior</button>
+
+                <span>Página {{ paginaActualServicio }} de {{ paginasServiciosTotales() }}</span>
+
+                <button class="btn btn-secondary ms-2" 
+                        :disabled="paginaActualServicio === paginasServiciosTotales()" 
+                        @@click="cargarServicios(paginaActualServicio + 1)">Siguiente</button>
+            </div>
         </div>
     </div>
 
     <!-- Repuestos -->
     <div v-if="repuestosVisibles" class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Repuestos del servicio #{{ servicioSeleccionado.idServicio }}</span>
-            <button class="btn btn-sm btn-success" @@click="abrirModalRepuesto">+ Agregar repuesto</button>
+            <div class="d-flex justify-content-between align-items-center" style="width: -webkit-fill-available;">
+                <span>{{ headerRepuestos() }}</span>
+                <button v-if="sePuedeFinalizarPedido()" class="btn btn-sm btn-success" @@click="abrirModalRepuesto">+ Agregar repuesto</button>
+            </div>
+            <button class="btn btn-sm btn-secondary" @@click="ocultarRepuestos" style="margin-left: 1rem;">X</button>
         </div>
         <div class="card-body p-0">
             <table class="table table-bordered table-striped">
@@ -122,9 +144,9 @@
                         <th>ID</th>
                         <th>Repuesto</th>
                         <th>Cantidad</th>
-                        <th>Costo</th>
+                        <th>Costo Unitario</th>
                         <th>Total</th>
-                        <th>Acciones</th>
+                        <th v-if="sePuedeFinalizarPedido()">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -134,7 +156,7 @@
                         <td>{{ r.cantidad }}</td>
                         <td>${{ r.repuesto.costoRepuestoBase }}</td>
                         <td>${{ r.total }}</td>
-                        <td>
+                        <td v-if="sePuedeFinalizarPedido()">
                             <button class="btn btn-sm btn-primary" @@click="editarRepuesto(r)">Editar</button>
                             <button class="btn btn-sm btn-danger" @@click="eliminarRepuesto(r)">Eliminar</button>
                         </td>
@@ -144,13 +166,178 @@
                     </tr>
                 </tbody>
             </table>
+
+            <!-- Paginación -->
+            <div class="text-center">
+                <button class="btn btn-secondary me-2" 
+                        :disabled="paginaActualRepuesto === 1" 
+                        @@click="cargarRepuestos(paginaActualRepuesto - 1)">Anterior</button>
+
+                <span>Página {{ paginaActualRepuesto }} de {{ paginasRepuestosTotales() }}</span>
+
+                <button class="btn btn-secondary ms-2" 
+                        :disabled="paginaActualRepuesto === paginasRepuestosTotales()" 
+                        @@click="cargarRepuestos(paginaActualRepuesto + 1)">Siguiente</button>
+            </div>
         </div>
     </div>
 
     <!-- Acciones finales -->
     <div class="text-center mt-4">
-        <button class="btn btn-danger me-2" @@click="cancelarPedido">Cancelar Pedido</button>
-        <button class="btn btn-success me-2" @@click="finalizarPedido">Finalizar Pedido</button>
+        <button v-if="sePuedeCancelarPedido()" class="btn btn-danger me-2" @@click="cancelarPedido(true)">Cancelar Pedido</button>
+        <button v-if="sePuedeActivarPedido()" class="btn btn-info me-2" @@click="cancelarPedido(false)">Activar Pedido</button>
+        <button v-if="sePuedeFinalizarPedido()" class="btn btn-primary me-2" @@click="abrirModalFinal">Finalizar Pedido</button>
+        <button v-if="sePuedeModificarPedido()" class="btn btn-warning me-2" @@click="PagarOVolverPedido(true)">Modificar Pedido</button>
+        <button v-if="sePuedePagarPedido()" class="btn btn-success me-2" @@click="PagarOVolverPedido(false)">Pagar Pedido</button>
+    </div>
+
+    <!-- Modal de Servicio -->
+    <div class="modal fade" id="modalServicio" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="formServicios" @@submit.prevent="guardarServicio()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" @@click="closeModal('modalServicio')"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="IdPedido" value="@Model.IdPedido" />
+                        <input type="hidden" name="IdServicio" :value="formServicio.idServicio" />
+
+                        <!-- Tipo de Servicio -->
+                        <div class="mb-3 position-relative">
+                            <label>Tipo de Servicio</label>
+                            <input id="inputTipoServicio" type="text" v-model="busquedaTipoServicio" 
+                                    @@input="buscarTipoServicios"
+                                    placeholder="Buscar tipo de servicio por nombre o descripción" 
+                                    class="form-control" autocomplete="off">
+
+                            <!-- lista desplegable -->
+                            <ul v-if="resultadosTipoServicios.length > 0" 
+                                class="list-group position-absolute w-100" 
+                                style="z-index: 1000; max-height: 150px; overflow-y: auto;">
+                                <li v-for="tipoServicio in resultadosTipoServicios"
+                                    :key="tipoServicio.IdTipoServicio"
+                                    class="list-group-item list-group-item-action"
+                                    @@click="seleccionarTipoServicio(tipoServicio)">
+                                {{ tipoServicio.Nombre }}
+                                </li>
+                            </ul>
+
+                            <!-- campo oculto para enviar -->
+                            <input type="hidden" name="IdTipoServicio" :value="selectedTipoServicio ? selectedTipoServicio.IdTipoServicio : 0">
+
+                            <div v-if="selectedTipoServicio" class="mt-2 text-success">
+                                <small>Seleccionado: {{ selectedTipoServicio.Nombre? selectedTipoServicio.Nombre:selectedTipoServicio.descripcionLarga }}</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Descripción</label>
+                            <input v-model="formServicio.descripcion" name="Descripcion" class="form-control">
+                            <div v-if="errores.Descripcion" class="text-danger">{{ errores.Descripcion[0] }}</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarServicio()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" @@click="closeModal('modalServicio')">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Repuesto -->
+    <div class="modal fade" id="modalDetalleRepuesto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="formDetalleRepuestos" @@submit.prevent="guardarDetalleRepuesto()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" @@click="closeModal('modalDetalleRepuesto')"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="IdDetalleRepuesto" :value="formDetalle.idDetalleRepuesto" />
+
+                        <!-- Repuestos -->
+                        <div class="mb-3 position-relative">
+                            <label>Repuesto</label>
+                            <input type="text" v-model="busquedaRepuesto" 
+                                    @@input="buscarRepuesto"
+                                    placeholder="Buscar Repuesto por nombre o descripción" 
+                                    class="form-control" autocomplete="off">
+
+                            <!-- lista desplegable -->
+                            <ul v-if="resultadosRepuestos.length > 0" 
+                                class="list-group position-absolute w-100" 
+                                style="z-index: 1000; max-height: 150px; overflow-y: auto;">
+                                <li v-for="repuesto in resultadosRepuestos"
+                                    :key="repuesto.IdRepuesto"
+                                    class="list-group-item list-group-item-action"
+                                    @@click="seleccionarRepuesto(repuesto)">
+                                {{ repuesto.DescripcionCorta }}
+                                </li>
+                            </ul>
+
+                            <!-- campo oculto para enviar -->
+                            <input type="hidden" name="IdRepuesto" :value="selectedRepuesto ? selectedRepuesto.IdRepuesto : 0">
+
+                            <div v-if="selectedRepuesto" class="mt-2 text-success">
+                                <small>Seleccionado: {{ selectedRepuesto.DescripcionCorta }}</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Cantidad</label>
+                            <input v-model="formDetalle.cantidad" name="Cantidad" class="form-control">
+                            <div v-if="errores.Cantidad" class="text-danger">{{ errores.Cantidad[0] }}</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarDetalleRepuesto()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" @@click="closeModal('modalDetalleRepuesto')">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Finalización -->
+    <div class="modal fade" id="modalFin" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="formFins" @@submit.prevent="guardarFin()">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ modalTitulo }}</h5>
+                        <button type="button" class="btn-close" @@click="closeModal('modalFin')"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="IdPedido" value="@Model.IdPedido" />
+
+                        <div class="mb-3">
+                            <label>Observación de finalización</label>
+                            <input v-model="formFin.observacionFinal" name="ObservacionFinal" class="form-control">
+                            <div v-if="errores.ObservacionFinal" class="text-danger">{{ errores.ObservacionFinal[0] }}</div>
+                        </div>
+
+                        <p><b>Costo estimado:</b> ${{ pedido.costoEstimado }}</p>
+
+                        <div class="mb-3">
+                            <label>Costo Final</label>
+                            <input v-model="formFin.costoFinal" name="CostoFinal" class="form-control">
+                            <div v-if="errores.CostoFinal" class="text-danger">{{ errores.CostoFinal[0] }}</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @@click="guardarFin()">Guardar</button>
+                        <button type="button" class="btn btn-secondary" @@click="closeModal('modalFin')">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -161,6 +348,7 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
+            userRol: "@User.FindFirst("Rol")?.Value",
             pedido: {
                 idPedido: @Model.IdPedido,
                 idUsuario: @Model.IdUsuario,
@@ -182,10 +370,43 @@ createApp({
                 },
                 creadoPor: '@Html.Raw(Model.Usuario?.NombreCompleto ?? "Desconocido")'
             },
+            formServicio: {
+                idServicio: 0,
+                idTipoServicio: 0,
+                descripcion: ''
+            },
+            formDetalle: {
+                idDetalleRepuesto: 0,
+                idRepuesto: 0,
+                cantidad: 0
+            },
+            formFin: {
+                idPedido: 0,
+                observacionFinal: '',
+                costoFinal: 0
+            },
             servicios: [],
             repuestos: [],
             servicioSeleccionado: null,
-            repuestosVisibles: false
+            repuestosVisibles: false,
+
+            modalTitulo: '',
+            errores: {},
+            paginaActualServicio: 1,
+            tamanioPaginaServicio: 5,
+            totalRegistrosServicio: 0,
+            paginaActualRepuesto: 1,
+            tamanioPaginaRepuesto: 5,
+            totalRegistrosRepuesto: 0,
+
+            busquedaTipoServicio: '',
+            resultadosTipoServicios: [],
+            selectedTipoServicio: null,
+            busquedaTimer: null,
+
+            busquedaRepuesto: '',
+            resultadosRepuestos: [],
+            selectedRepuesto: null
         };
     },
     mounted() {
@@ -193,17 +414,33 @@ createApp({
     },
     methods: {
         volver() { window.location.href = '/Pedidos'; },
-        cargarServicios() {
-            fetch(`/Servicios/PorPedido?id=${this.pedido.idPedido}`)
+        cargarServicios(pagina = 1) {
+            fetch(`/Servicios/GetPagedID?idPedido=${this.pedido.idPedido}&pagina=${pagina}&tamanioPagina=${this.tamanioPaginaServicio}`)
+            .then(res => res.json())
+            .then(data => {
+                this.servicios = data.data;
+                this.totalRegistrosServicio = data.total;
+                this.paginaActualServicio = pagina;
+            });
+        },
+        cargarRepuestos(pagina = 1, idServicio) {
+            fetch(`/DetalleRepuestos/GetPaged?idServicio=${idServicio}&pagina=${pagina}&tamanioPagina=${this.tamanioPaginaRepuesto}`)
                 .then(res => res.json())
-                .then(data => this.servicios = data);
+                .then(data => {
+                    this.repuestos = data.data;
+                    this.totalRegistrosRepuesto = data.total;
+                    this.paginaActualRepuesto = pagina;
+                });
         },
         verRepuestos(servicio) {
             this.servicioSeleccionado = servicio;
             this.repuestosVisibles = true;
-            fetch(`/Repuestos/PorServicio?id=${servicio.idServicio}`)
-                .then(res => res.json())
-                .then(data => this.repuestos = data);
+            this.cargarRepuestos(1, servicio.idServicio);
+        },
+        ocultarRepuestos() {
+            this.servicioSeleccionado = null;
+            this.repuestosVisibles = false;
+            this.repuestos = [];
         },
         formatFecha(fecha) {
             if (!fecha) return '—';
@@ -229,15 +466,365 @@ createApp({
                 default: return '';
             }
         },
-        abrirModalServicio() { /* TODO */ },
-        editarServicio(s) { /* TODO */ },
-        eliminarServicio(s) { /* TODO */ },
-        abrirModalRepuesto() { /* TODO */ },
-        editarRepuesto(r) { /* TODO */ },
-        eliminarRepuesto(r) { /* TODO */ },
-        cancelarPedido() { /* TODO */ },
-        finalizarPedido() { /* TODO */ },
-        generarComprobante() { /* TODO */ }
+        paginasServiciosTotales() {
+            return Math.max(Math.ceil(this.totalRegistrosServicio / this.tamanioPaginaServicio), 1);
+        },
+        paginasRepuestosTotales() {
+            return Math.max(Math.ceil(this.totalRegistrosRepuesto / this.tamanioPaginaRepuesto), 1);
+        },
+        // Helper: header for repuestos section (safe when servicioSeleccionado is null)
+        headerRepuestos() {
+            return this.servicioSeleccionado && this.servicioSeleccionado.idServicio
+                ? `Repuestos del servicio #${this.servicioSeleccionado.idServicio}`
+                : 'Repuestos';
+        },
+        // Safe getters for nested pedido.vehiculo properties
+        vehiculoDuenoNombre() {
+            try {
+                return this.pedido && this.pedido.vehiculo && this.pedido.vehiculo.duenoNombre
+                    ? this.pedido.vehiculo.duenoNombre
+                    : '—';
+            } catch { return '—'; }
+        },
+        vehiculoDescripcionCorta() {
+            try {
+                return this.pedido && this.pedido.vehiculo && this.pedido.vehiculo.descripcionCorta
+                    ? this.pedido.vehiculo.descripcionCorta
+                    : '—';
+            } catch { return '—'; }
+        },
+        creadoPor() {
+            try {
+                return this.pedido && this.pedido.creadoPor
+                    ? this.pedido.creadoPor
+                    : (this.pedido && this.pedido.usuario && this.pedido.usuario.nombre ? this.pedido.usuario.nombre : 'Desconocido');
+            } catch { return 'Desconocido'; }
+        },
+        abrirModalServicio() {
+            this.modalTitulo = "Nuevo Servicio";
+            this.formServicio = { idServicio: 0, descripcion: '' };
+            this.selectedTipoServicio = null;
+            this.busquedaTipoServicio = '';
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalServicio')).show();
+        },
+        editarServicio(s) {
+            this.modalTitulo = "Editar Servicio";
+            this.formServicio = { ...s };
+            this.selectedTipoServicio = { IdTipoServicio: s.idTipoServicio, Nombre: s.tipoServicio.descripcionLarga };
+            this.busquedaTipoServicio = s.tipoServicio.descripcionLarga;
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalServicio')).show();
+        },
+        cambiarEstadoServicio(s, activo) {
+            fetch(`/Servicios/CambiarEstado?id=${s.idServicio}&activo=${activo}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.cargarServicios(this.paginaActualServicio);
+                    this.actualizarPedido();
+                } else {
+                    alert("No se pudo cambiar el estado del servicio");
+                }
+            });
+        },
+        abrirModalRepuesto() {
+            this.modalTitulo = "Nuevo Detalle de repuesto";
+            this.formDetalle = { idDetalleRepuesto: 0, idRepuesto: 0, cantidad: 0 };
+            this.errores = {};
+            this.selectedRepuesto = null;
+            this.busquedaRepuesto = '';
+            new bootstrap.Modal(document.getElementById('modalDetalleRepuesto')).show();
+        },
+        editarRepuesto(r) {
+            this.modalTitulo = "Editar Detalle de repuesto";
+            this.formDetalle = { ...r };
+            this.errores = {};
+            this.selectedRepuesto = { IdRepuesto: r.idRepuesto, DescripcionCorta: r.repuesto.descripcionCorta };
+            this.busquedaRepuesto = r.repuesto.descripcionCorta;
+            new bootstrap.Modal(document.getElementById('modalDetalleRepuesto')).show();
+        },
+        eliminarRepuesto(r) {
+            fetch(`/DetalleRepuestos/Eliminar?id=${r.idDetalleRepuesto}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.cargarServicios(this.paginaActualServicio);
+                    this.cargarRepuestos(this.paginaActualRepuesto, this.servicioSeleccionado.idServicio);
+                    this.actualizarPedido();
+                } else {
+                    alert("No se pudo eliminar el detalle del pedido");
+                }
+            });
+        },
+        buscarTipoServicios() {
+            clearTimeout(this.busquedaTimer);
+            if (!this.busquedaTipoServicio || this.busquedaTipoServicio.length < 2) {
+                this.resultadosTipoServicios = [];
+                return;
+            }
+
+            // pequeño delay para no hacer fetch en cada tecla
+            this.busquedaTimer = setTimeout(() => {
+                fetch(`/TipoServicios/Search?q=${encodeURIComponent(this.busquedaTipoServicio)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                                                // mapear a { IdTipoServicio, Nombre }
+                                                this.resultadosTipoServicios = Array.isArray(data)
+                                                        ? data.map(c => ({
+                                                                IdTipoServicio: c.IdTipoServicio ?? c.idTipoServicio ?? null,
+                                                                Nombre: c.Nombre ?? c.nombre ?? ''
+                                                            }))
+                                                        : [];
+                    })
+                    .catch(err => {
+                        console.error('Error buscando tipo de servicios:', err);
+                        this.resultadosTipoServicios = [];
+                    });
+            }, 300);
+        },
+        seleccionarTipoServicio(s) {
+            this.selectedTipoServicio = { IdTipoServicio: s.IdTipoServicio, Nombre: s.Nombre };
+            this.busquedaTipoServicio = s.Nombre;
+            this.resultadosTipoServicios = [];
+        },
+        buscarRepuesto() {
+            clearTimeout(this.busquedaTimer);
+            if (!this.busquedaRepuesto || this.busquedaRepuesto.length < 2) {
+                this.resultadosRepuestos = [];
+                return;
+            }
+
+            // pequeño delay para no hacer fetch en cada tecla
+            this.busquedaTimer = setTimeout(() => {
+                fetch(`/Repuestos/Search?q=${encodeURIComponent(this.busquedaRepuesto)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                                                // mapear a { IdRepuesto, DescripcionCorta }
+                                                this.resultadosRepuestos = Array.isArray(data)
+                                                        ? data.map(c => ({
+                                                                IdRepuesto: c.IdRepuesto ?? c.idRepuesto ?? null,
+                                                                DescripcionCorta: c.DescripcionCorta ?? c.descripcionCorta ?? ''
+                                                            }))
+                                                        : [];
+                    })
+                    .catch(err => {
+                        console.error('Error buscando repuestos:', err);
+                        this.resultadosRepuestos = [];
+                    });
+            }, 300);
+        },
+        seleccionarRepuesto(r) {
+            this.selectedRepuesto = { IdRepuesto: r.IdRepuesto, DescripcionCorta: r.DescripcionCorta };
+            this.busquedaRepuesto = r.DescripcionCorta;
+            this.resultadosRepuestos = [];
+        },
+        async guardarServicio() {
+            try {
+                // Construir FormData manualmente e incluir el token antiforgery que generó Razor (@Html.AntiForgeryToken())
+                const tokenInput = document.querySelector('#modalServicio input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : null;
+
+                const fd = new FormData();
+                fd.append('IdServicio', this.formServicio.idServicio || 0);
+                fd.append('IdPedido', this.pedido.idPedido || 0);
+                fd.append('IdTipoServicio', this.selectedTipoServicio ? this.selectedTipoServicio.IdTipoServicio : this.formServicio.idTipoServicio);
+                fd.append('Descripcion', this.formServicio.descripcion || '');
+                if (token) fd.append('__RequestVerificationToken', token);
+
+                const res = await fetch('/Servicios/Guardar', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    this.errores = {}; // limpiar errores
+                    this.cargarServicios(this.paginaActualServicio);
+                    await this.actualizarPedido();
+                    this.closeModal('modalServicio');
+                } else if (data.errors) {
+                    this.errores = data.errors; // guardar errores del servidor
+                } else {
+                    alert('Error al guardar el servicio');
+                }
+            } catch (err) {
+                console.error('guardarServicio error:', err);
+                alert('Ocurrió un error al guardar. Revisa la consola.');
+            }
+        },
+        closeModal(modalId) {
+            document.activeElement.blur(); 
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) modal.hide();
+        },
+        async guardarDetalleRepuesto() {
+            try {
+            // Construir FormData manualmente e incluir el token antiforgery que generó Razor (@Html.AntiForgeryToken())
+                const tokenInput = document.querySelector('#modalDetalleRepuesto input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : null;
+
+                const fd = new FormData();
+                fd.append('IdDetalleRepuesto', this.formDetalle.idDetalleRepuesto || 0);
+                fd.append('IdServicio', this.servicioSeleccionado.idServicio || 0);
+                fd.append('IdRepuesto', this.selectedRepuesto ? this.selectedRepuesto.IdRepuesto : this.formDetalle.idRepuesto);
+                fd.append('Cantidad', this.formDetalle.cantidad || '');
+
+                if (token) fd.append('__RequestVerificationToken', token);
+
+                const res = await fetch('/DetalleRepuestos/Guardar', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    this.errores = {}; // limpiar errores
+                    this.cargarServicios(this.paginaActualServicio);
+                    this.cargarRepuestos(this.paginaActualRepuesto, this.servicioSeleccionado.idServicio);
+                    await this.actualizarPedido();
+                    this.closeModal('modalDetalleRepuesto')
+                } else if (data.errors) {
+                    this.errores = data.errors; // guardar errores del servidor
+                } else {
+                    alert('Error al guardar el detalle de repuesto del servicio');
+                }
+            } catch (err) {
+                console.error('guardarDetalleRepuesto error:', err);
+                alert('Ocurrió un error al guardar. Revisa la consola.');
+            }
+        },
+        async actualizarPedido() {
+            const res = await fetch(`/Pedidos/GetById?id=${this.pedido.idPedido}`);
+            const data = await res.json();
+
+            // Actualiza todos los campos visibles en pantalla
+            this.pedido.costoEstimado = data.costoEstimado;
+            this.pedido.costoFinal = data.costoFinal;
+            this.pedido.estado = data.estado;
+            this.pedido.fechaFinalizacion = data.fechaFinalizacion;
+            this.pedido.observacionFinal = data.observacionFinal;
+
+            this.pedido.vehiculo.descripcionCorta = data.vehiculo.descripcionCorta;
+            this.pedido.vehiculo.duenoNombre = data.vehiculo.duenoNombre;
+            this.pedido.creadoPor = data.creadoPor;
+        },
+        PagarOVolverPedido(volver) {
+            fetch(`/Pedidos/PagarOVolverPedido?id=${this.pedido.idPedido}&volver=${volver}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.actualizarPedido();
+                } else {
+                    alert("No se pudo cambiar el estado");
+                }
+            });
+        },
+        cancelarPedido(cancelar) {
+            fetch(`/Pedidos/CancelarPedido?id=${this.pedido.idPedido}&cancelar=${cancelar}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.actualizarPedido();
+                } else {
+                    alert("No se pudo cambiar el estado");
+                }
+            });
+        },
+        sePuedeCancelarPedido() {
+            if (this.pedido != null && this.pedido.estado < 4) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        sePuedeActivarPedido() {
+            if (this.pedido != null && this.pedido.estado == 5) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        sePuedeFinalizarPedido() {
+            if (!this.pedido) return false;
+
+            const esMecanicoOAdmin = 
+                this.userRol === "Mecanico" || 
+                this.userRol === "Administrador";
+
+            return esMecanicoOAdmin && this.pedido.estado < 3;
+        },
+        sePuedeModificarPedido() {
+            if (!this.pedido) return false;
+
+            const esMecanicoOAdmin = 
+                this.userRol === "Mecanico" || 
+                this.userRol === "Administrador";
+
+            return esMecanicoOAdmin && this.pedido.estado == 3;
+        },
+        sePuedePagarPedido() {
+            if (!this.pedido) return false;
+
+            return this.pedido.estado == 3;
+        },
+        abrirModalFinal() {
+            this.modalTitulo = "Finalizar el Pedido";
+            this.formFin = { observacionFinal: '', costoFinal: this.pedido.costoEstimado };
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalFin')).show();
+        },
+        async guardarFin() {
+            try {
+            // Construir FormData manualmente e incluir el token antiforgery que generó Razor (@Html.AntiForgeryToken())
+                const tokenInput = document.querySelector('#modalFin input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : null;
+
+                const fd = new FormData();
+                fd.append('IdPedido', this.pedido.idPedido || 0);
+                fd.append('ObservacionFinal', this.formFin.observacionFinal || '');
+                fd.append('CostoFinal', this.formFin.costoFinal || 0);
+
+                if (token) fd.append('__RequestVerificationToken', token);
+
+                const res = await fetch('/Pedidos/Finalizar', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    this.errores = {}; // limpiar errores
+                    await this.actualizarPedido();
+                    this.closeModal('modalFin')
+                } else if (data.errors) {
+                    this.errores = data.errors; // guardar errores del servidor
+                } else {
+                    alert('Error al finalizar el pedido');
+                }
+            } catch (err) {
+                console.error('finalizarPedido error:', err);
+                alert('Ocurrió un error al finalizar. Revisa la consola.');
+            }
+        }
     }
 }).mount('#app');
 </script>

@@ -17,6 +17,7 @@ namespace vertacnik_TallerMecanico2025.Models
         public int IdRepuesto { get; set; }
 
         [Required(ErrorMessage = "La Cantidad es obligatoria.")]
+        [RegularExpression(@"^\d+$", ErrorMessage = "La cantidad solo puede contener números.")]
         [Range(1, 1000, ErrorMessage = "La cantidad debe estar entre 1 y 1000.")]
         public int Cantidad { get; set; }
 
@@ -29,6 +30,15 @@ namespace vertacnik_TallerMecanico2025.Models
             get
             {
                 return Repuesto != null ? Repuesto.CostoRepuestoBase * Cantidad : 0;
+            }
+        }
+
+        [NotMapped]
+        public string Ver
+        {
+            get
+            {
+                return "detalleRepuesto #"+IdDetalleRepuesto+": idServicio("+IdServicio+"), idRepuesto("+IdRepuesto+"), cantidad("+Cantidad+")";
             }
         }
     }

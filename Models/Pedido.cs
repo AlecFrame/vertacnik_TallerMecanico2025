@@ -50,6 +50,7 @@ namespace vertacnik_TallerMecanico2025.Models
         public decimal CostoEstimado { get; set; }
 
         [Display(Name = "Costo Final")]
+        [RegularExpression(@"^\d+$", ErrorMessage = "El costo final solo puede contener números.")]
         public decimal? CostoFinal { get; set; }
 
         [DataType(DataType.Date)]
@@ -68,6 +69,16 @@ namespace vertacnik_TallerMecanico2025.Models
         {
             get { return Vehiculo != null ? Vehiculo.IdCliente : 0; }
         }
+
+        [NotMapped]
+        public string DescripcionCompleta
+        {
+            get
+            {
+                return "pedido #"+IdPedido+": idUsuario("+IdUsuario+"), idVehiculo("+IdVehiculo+
+                "), observacionFinal("+ObservacionFinal+"), costoEstimado("+CostoEstimado+"), costoFinal("+CostoFinal+")";
+            }
+        }
         
 
         [NotMapped]
@@ -75,7 +86,16 @@ namespace vertacnik_TallerMecanico2025.Models
         {
             get
             {
-                return Estado != EstadoPedido.Cancelado && Estado != EstadoPedido.Pagado;
+                return Estado == EstadoPedido.Pendiente;
+            }
+        }
+
+        [NotMapped]
+        public bool SePuedeCancelar
+        {
+            get
+            {
+                return Estado == EstadoPedido.Pendiente || Estado == EstadoPedido.EnProceso;
             }
         }
 
@@ -85,6 +105,24 @@ namespace vertacnik_TallerMecanico2025.Models
             get
             {
                 return Estado == EstadoPedido.Cancelado;
+            }
+        }
+
+        [NotMapped]
+        public bool SePuedeVolverEnProceso
+        {
+            get
+            {
+                return Estado == EstadoPedido.Finalizado;
+            }
+        }
+
+        [NotMapped]
+        public bool EstaPagado
+        {
+            get
+            {
+                return Estado == EstadoPedido.Pagado;
             }
         }
     }

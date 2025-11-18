@@ -6,37 +6,50 @@ using Microsoft.AspNetCore.Authorization;
 namespace vertacnik_TallerMecanico2025.Controllers;
 
 [Authorize]
-public class RepuestosController : Controller
+public class DetalleRepuestosController : Controller
 {
     private readonly ILogger<RepuestosController> _logger;
-    private readonly RepuestoRepo _repo;
+    private readonly DetalleRepuestoRepo _repo;
+    private readonly RepuestoRepo _repoRepuesto;
+    private readonly ServicioRepo _repoServicio;
+    private readonly PedidoRepo _repoPedido;
     private readonly IConfiguration _config;
 
-    public RepuestosController(IConfiguration config, ILogger<RepuestosController> logger)
+    public DetalleRepuestosController(IConfiguration config, ILogger<RepuestosController> logger)
     {
         _config = config;
-        _repo = new RepuestoRepo(config);
+        _repo = new DetalleRepuestoRepo(config);
+        _repoRepuesto = new RepuestoRepo(config);
+        _repoServicio = new ServicioRepo(config);
+        _repoPedido = new PedidoRepo(config);
         _logger = logger;
-    }
-
-    public IActionResult Index()
-    {
-        return View();
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Guardar(Repuesto repuesto)
+    public IActionResult Guardar(DetalleRepuesto detalle)
     {
+        //Console.WriteLine(detalle.Ver);
+
         if (ModelState.IsValid)
         {
-            if (repuesto.IdRepuesto > 0)
+            if (detalle.IdDetalleRepuesto > 0)
             {
-                _repo.Modificacion(repuesto);
+                _repo.Modificacion(detalle);
+                Servicio? servicio = _repoServicio.ObtenerPorId(detalle.IdServicio);
+                if (servicio!=null) {
+                    _repoServicio.ActualizarCostoBase(servicio.IdServicio);
+                    _repoPedido.ActualizarCostoEstimado(servicio.IdPedido);
+                }
             }
             else
             {
-                _repo.Alta(repuesto);
+                _repo.Alta(detalle);
+                Servicio? servicio = _repoServicio.ObtenerPorId(detalle.IdServicio);
+                if (servicio!=null) {
+                    _repoServicio.ActualizarCostoBase(servicio.IdServicio);
+                    _repoPedido.ActualizarCostoEstimado(servicio.IdPedido);
+                }
             }
             // Si es AJAX, devolver JSON, si no, redirigir
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -50,11 +63,8 @@ public class RepuestosController : Controller
         }
         else
         {
-            // Si es AJAX, devolver JSON con errores, si no, redirigir
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-                // Construir un diccionario campo -> lista de errores para que el cliente Vue pueda
-                // mostrar los mensajes debajo de cada campo (por ejemplo: errores.Nombre => ["Requerido"])
                 var errorDict = ModelState
                     .Where(kvp => kvp.Value.Errors != null && kvp.Value.Errors.Count > 0)
                     .ToDictionary(
@@ -72,9 +82,20 @@ public class RepuestosController : Controller
     }
 
     [HttpPost]
-    public IActionResult CambiarEstado(int id, bool activo)
+    public IActionResult Eliminar(int id)
     {
-        _repo.CambiarEstado(id, activo);
+        DetalleRepuesto? detalle = _repo.ObtenerPorId(id);
+
+        if (detalle!=null) {
+
+            _repo.Baja(id);
+            Servicio? servicio = _repoServicio.ObtenerPorId(detalle.IdServicio);
+            
+            if (servicio!=null) {
+                _repoServicio.ActualizarCostoBase(servicio.IdServicio);
+                _repoPedido.ActualizarCostoEstimado(servicio.IdPedido);
+            }
+        }
 
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
@@ -85,34 +106,9 @@ public class RepuestosController : Controller
     }
 
     [HttpGet]
-    public IActionResult GetAll()
+    public IActionResult GetPaged(int idServicio, int pagina = 1, int tamanioPagina = 10)
     {
-        var lista = _repo.ObtenerTodos();
-        return Json(lista);
-    }
-
-    [HttpGet]
-    public IActionResult Search(string q)
-    {
-        if (string.IsNullOrWhiteSpace(q))
-            return Json(new List<object>());
-
-        var verificarSiFunciona = _repo.BuscarPorNombreYDescripcion(q);
-
-        var resultados = _repo.BuscarPorNombreYDescripcion(q)
-            .Select(r => new
-            {
-                idRepuesto = r.IdRepuesto,
-                descripcionCorta = $"{r.DescripcionCorta}"
-            }).ToList();
-
-        return Json(resultados);
-    }
-
-    [HttpGet]
-    public IActionResult GetPaged(int pagina = 1, int tamanioPagina = 10)
-    {
-        var (lista, total) = _repo.ObtenerPaginado(pagina, tamanioPagina);
+        var (lista, total) = _repo.ObtenerPaginadoPorServicio(idServicio, pagina, tamanioPagina);
         return Json(new { data = lista, total });
     }
 

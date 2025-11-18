@@ -41,6 +41,7 @@ table th {
     text-align: center;
     justify-items: center;
     justify-content: center;
+    gap: .5rem !important;
 }
 
 .user-perfil-avatar {

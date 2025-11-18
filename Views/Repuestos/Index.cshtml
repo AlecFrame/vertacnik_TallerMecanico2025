@@ -37,7 +37,7 @@
                     <span v-if="repuesto.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
                     <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
                 </td>
-                <td>
+                <td class="d-flex">
                     <button v-if="repuesto.estado" class="btn btn-sm btn-primary" @@click="editarRepuesto(repuesto)">Editar</button>
                     <button v-if="repuesto.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(repuesto, false)">Baja</button>
                     <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(repuesto, true)">Alta</button>
@@ -77,7 +77,7 @@
                     @Html.AntiForgeryToken()
                     <div class="modal-header">
                         <h5 class="modal-title">{{ modalTitulo }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" @@click="closeModal('modalRepuesto')"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -99,7 +99,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" @@click="guardarRepuesto()">Guardar</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" @@click="closeModal('modalRepuesto')">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -181,7 +181,7 @@ createApp({
                 if (data.success) {
                     this.errores = {}; // limpiar errores
                     this.cargarRepuestos();
-                    bootstrap.Modal.getInstance(document.getElementById('modalRepuesto')).hide();
+                    this.closeModal('modalRepuesto');
                 } else if (data.errors) {
                     this.errores = data.errors; // guardar errores del servidor
                 } else {
@@ -205,6 +205,11 @@ createApp({
                     alert("No se pudo cambiar el estado");
                 }
             });
+        },
+        closeModal(modalId) {
+            document.activeElement.blur(); 
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) modal.hide();
         }
     }
 }).mount('#app');

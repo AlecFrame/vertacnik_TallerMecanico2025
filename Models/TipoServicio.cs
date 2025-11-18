@@ -25,5 +25,14 @@ namespace vertacnik_TallerMecanico2025.Models
 
         [DefaultValue(true)]
         public bool Estado { get; set; }
+
+        [NotMapped]
+        public string DescripcionLarga
+        {
+            get
+            {
+                return Nombre+", "+Descripcion;
+            }
+        }
     }
 }

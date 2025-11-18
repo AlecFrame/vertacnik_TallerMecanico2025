@@ -241,7 +241,7 @@ namespace vertacnik_TallerMecanico2025.Models
 
                 ServicioRepo _servicioRepo = new ServicioRepo(configuration);
                 // 1. Obtener todos los servicios del pedido
-                var servicios = _servicioRepo.ObtenerPorIdPedido(idPedido);
+                var servicios = _servicioRepo.ObtenerActivosPorIdPedido(idPedido);
 
                 // 2. Sumar sus costos
                 decimal costoTotal = servicios.Sum(s => s.CostoBase);

@@ -97,13 +97,13 @@ public class TipoServiciosController : Controller
         if (string.IsNullOrWhiteSpace(q))
             return Json(new List<object>());
 
-        var verificarSiFunciona = _repo.BuscarPorNombre(q);
+        var verificarSiFunciona = _repo.BuscarPorNombreYDescripcion(q);
 
-        var resultados = _repo.BuscarPorNombre(q)
+        var resultados = _repo.BuscarPorNombreYDescripcion(q)
             .Select(t => new
             {
-                idCliente = t.IdTipoServicio,
-                nombre = $"{t.Nombre}"
+                idTipoServicio = t.IdTipoServicio,
+                nombre = $"{t.DescripcionLarga}"
             }).ToList();
 
         return Json(resultados);

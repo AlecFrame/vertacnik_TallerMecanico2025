@@ -77,7 +77,7 @@
                     @Html.AntiForgeryToken()
                     <div class="modal-header">
                         <h5 class="modal-title">{{ modalTitulo }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" @@click="closeModal('modalTipoServicio')"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -99,7 +99,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" @@click="guardarTipoServicio()">Guardar</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" @@click="closeModal('modalTipoServicio')">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -181,7 +181,7 @@ createApp({
                 if (data.success) {
                     this.errores = {}; // limpiar errores
                     this.cargarTipoServicios();
-                    bootstrap.Modal.getInstance(document.getElementById('modalTipoServicio')).hide();
+                    this.closeModal('modalTipoServicio');
                 } else if (data.errors) {
                     this.errores = data.errors; // guardar errores del servidor
                 } else {
@@ -205,6 +205,11 @@ createApp({
                     alert("No se pudo cambiar el estado");
                 }
             });
+        },
+        closeModal(modalId) {
+            document.activeElement.blur(); 
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) modal.hide();
         }
     }
 }).mount('#app');

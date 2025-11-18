@@ -141,6 +141,110 @@ public class PedidosController : Controller
         return RedirectToAction("Index");
     }
 
+    [HttpPost]
+    public IActionResult PagarOVolverPedido(int id, bool volver)
+    {
+        Pedido? pedido = _repo.ObtenerPorId(id);
+
+        if (pedido == null)
+            return NotFound();
+
+        if (pedido.Estado != EstadoPedido.Pagado)
+        {
+            if (pedido.Estado == EstadoPedido.Finalizado)
+            {
+                if (volver)
+                {
+                    pedido.FechaFinalizacion = null;
+                    pedido.ObservacionFinal = null;
+                    pedido.CostoFinal = null;
+                    pedido.Estado = EstadoPedido.EnProceso;
+                    _repo.Modificacion(pedido);
+
+                }
+                else
+                {
+                    pedido.FechaPago = DateTime.Now;
+                    pedido.Estado = EstadoPedido.Pagado;
+                    _repo.Modificacion(pedido);
+                }
+            }
+        }
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            return Json(new { success = true });
+        }
+
+        return RedirectToAction("Index");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Finalizar(Pedido pedido)
+    {
+        // ❗ Eliminar validaciones que NO aplican en este contexto
+        ModelState.Remove("IdUsuario");
+        ModelState.Remove("IdVehiculo");
+        ModelState.Remove("ObservacionCliente");
+        ModelState.Remove("FechaIngreso");
+        ModelState.Remove("CostoEstimado");
+        ModelState.Remove("FechaPago");
+
+        ModelState.Remove("Estado"); // Los seteo yo
+        ModelState.Remove("FechaFinalizacion");
+
+        // 🔥 Validaciones MANUALES para este proceso
+        if (string.IsNullOrWhiteSpace(pedido.ObservacionFinal))
+            ModelState.AddModelError("ObservacionFinal", "Debe ingresar la observación de finalización.");
+
+        if (pedido.CostoFinal == null)
+            ModelState.AddModelError("CostoFinal", "Debe ingresar el costo final.");
+
+        // Validación numérica
+        if (pedido.CostoFinal != null && pedido.CostoFinal < 0)
+            ModelState.AddModelError("CostoFinal", "El costo final no puede ser negativo.");
+        
+        if (ModelState.IsValid)
+        {
+            if (pedido.IdPedido > 0)
+            {
+                Pedido? pedidoExistente = _repo.ObtenerPorId(pedido.IdPedido);
+
+                if (pedidoExistente != null)
+                {
+                    pedidoExistente.FechaFinalizacion = DateTime.Now;
+                    pedidoExistente.ObservacionFinal = pedido.ObservacionFinal;
+                    pedidoExistente.CostoFinal = pedido.CostoFinal;
+                    pedidoExistente.Estado = EstadoPedido.Finalizado;
+
+                    _repo.Modificacion(pedidoExistente);
+                }
+            }
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = true });
+
+            return RedirectToAction("Index");
+        }
+        else
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                var errorDict = ModelState
+                    .Where(kvp => kvp.Value.Errors != null && kvp.Value.Errors.Count > 0)
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToList()
+                    );
+
+                return Json(new { success = false, errors = errorDict });
+            }
+
+            return RedirectToAction("Index");
+        }
+    }
+
     [HttpGet]
     public IActionResult GetAll()
     {
@@ -167,6 +271,30 @@ public class PedidosController : Controller
 
         return View(pedido);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetById(int id)
+    {
+        Pedido? pedido = _repo.ObtenerPorId(id);
+
+        if (pedido == null)
+            return NotFound();
+
+        return Json(new {
+            idPedido = pedido.IdPedido,
+            costoEstimado = pedido.CostoEstimado,
+            costoFinal = pedido.CostoFinal,
+            estado = (int)pedido.Estado,
+            fechaFinalizacion = pedido.FechaFinalizacion,
+            observacionFinal = pedido.ObservacionFinal,
+            vehiculo = new {
+                descripcionCorta = pedido.Vehiculo?.DescripcionCorta,
+                duenoNombre = pedido.Vehiculo?.DuenoNombre
+            },
+            creadoPor = pedido.Usuario?.NombreCompleto
+        });
+    }
+
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()

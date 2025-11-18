@@ -90,7 +90,7 @@
                     @Html.AntiForgeryToken()
                     <div class="modal-header">
                         <h5 class="modal-title">{{ modalTitulo }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" @@click="closeModal('modalUsuario')"></button>
                     </div>
                     <div class="modal-body">
                         <input type="hidden" name="IdUsuario" :value="form.idUsuario" />
@@ -150,7 +150,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" @@click="guardarUsuario()">Guardar</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" @@click="closeModal('modalUsuario')">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -299,9 +299,7 @@ createApp({
 
                 if (data.success) {
                     // cerrar modal
-                    const modalEl = document.getElementById('modalUsuario');
-                    const inst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                    inst.hide();
+                    this.closeModal('modalUsuario');
                     // recargar tabla
                     this.cargarUsuarios(this.paginaActual);
                 } else {
@@ -331,6 +329,11 @@ createApp({
                 console.error('cambiarEstado error:', err);
                 alert('Ocurrió un error al cambiar el estado. Revisa la consola.');
             });
+        },
+        closeModal(modalId) {
+            document.activeElement.blur(); 
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) modal.hide();
         }
     }
 }).mount('#app');

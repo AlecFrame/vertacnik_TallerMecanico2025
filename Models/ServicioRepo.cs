@@ -34,6 +34,20 @@ namespace vertacnik_TallerMecanico2025.Models
             }
         }
 
+        public void Baja(int idServicio)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+                string sql = "DELETE FROM servicios WHERE IdServicio = @IdServicio";
+                using (MySqlCommand command = new MySqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@IdServicio", idServicio);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
         public IList<Servicio> ObtenerTodos()
         {
             IList<Servicio> lista = new List<Servicio>();
@@ -196,6 +210,57 @@ namespace vertacnik_TallerMecanico2025.Models
             return (lista, total);
         }
 
+        public (IList<Servicio> lista, int total) ObtenerPaginadoID(int idPedido, int pagina, int tamanioPagina)
+        {
+            IList<Servicio> lista = new List<Servicio>();
+            int total = 0;
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // Obtener el total de registros
+                string countSql = "SELECT COUNT(*) FROM servicios WHERE IdPedido = @IdPedido";
+                using (MySqlCommand countCommand = new MySqlCommand(countSql, connection))
+                {
+                    countCommand.Parameters.AddWithValue("@IdPedido", idPedido);
+                    total = Convert.ToInt32(countCommand.ExecuteScalar());
+                }
+
+                // Obtener los registros paginados
+                string sql = "SELECT * FROM servicios WHERE IdPedido = @IdPedido LIMIT @Offset, @TamanioPagina";
+                using (MySqlCommand command = new MySqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@IdPedido", idPedido);
+                    command.Parameters.AddWithValue("@Offset", (pagina - 1) * tamanioPagina);
+                    command.Parameters.AddWithValue("@TamanioPagina", tamanioPagina);
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Servicio servicio = new Servicio
+                            {
+                                IdServicio = reader.GetInt32("IdServicio"),
+                                IdPedido = reader.GetInt32("IdPedido"),
+                                IdUsuario = reader.GetInt32("IdUsuario"),
+                                IdTipoServicio = reader.GetInt32("IdTipoServicio"),
+                                Fecha = reader.GetDateTime("Fecha"),
+                                Descripcion = reader.GetString("Descripcion"),
+                                CostoBase = reader.GetDecimal("CostoBase"),
+                                Estado = reader.GetBoolean("Estado")
+                            };
+
+                            // Cargar entidades relacionadas
+                            servicio.TipoServicio = _tipoServicioRepo.ObtenerPorId(servicio.IdTipoServicio);
+                            servicio.Pedido = _pedidoRepo.ObtenerPorId(servicio.IdPedido);
+                            servicio.Usuario = _usuarioRepo.ObtenerPorId(servicio.IdUsuario);
+
+                            lista.Add(servicio);
+                        }
+                    }
+                }
+            }
+            return (lista, total);
+        }
         public IList<Servicio> ObtenerPorIdPedido(int idPedido)
         {
             IList<Servicio> lista = new List<Servicio>();
@@ -203,6 +268,45 @@ namespace vertacnik_TallerMecanico2025.Models
             {
                 connection.Open();
                 string sql = "SELECT * FROM servicios WHERE IdPedido = @IdPedido";
+                using (MySqlCommand command = new MySqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@IdPedido", idPedido);
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Servicio servicio = new Servicio
+                            {
+                                IdServicio = reader.GetInt32("IdServicio"),
+                                IdPedido = reader.GetInt32("IdPedido"),
+                                IdUsuario = reader.GetInt32("IdUsuario"),
+                                IdTipoServicio = reader.GetInt32("IdTipoServicio"),
+                                Fecha = reader.GetDateTime("Fecha"),
+                                Descripcion = reader.GetString("Descripcion"),
+                                CostoBase = reader.GetDecimal("CostoBase"),
+                                Estado = reader.GetBoolean("Estado")
+                            };
+
+                            // Cargar entidades relacionadas
+                            servicio.TipoServicio = _tipoServicioRepo.ObtenerPorId(servicio.IdTipoServicio);
+                            servicio.Pedido = _pedidoRepo.ObtenerPorId(servicio.IdPedido);
+                            servicio.Usuario = _usuarioRepo.ObtenerPorId(servicio.IdUsuario);
+
+                            lista.Add(servicio);
+                        }
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public IList<Servicio> ObtenerActivosPorIdPedido(int idPedido)
+        {
+            IList<Servicio> lista = new List<Servicio>();
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+                string sql = "SELECT * FROM servicios WHERE Estado = 1 AND IdPedido = @IdPedido";
                 using (MySqlCommand command = new MySqlCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@IdPedido", idPedido);
@@ -249,7 +353,7 @@ namespace vertacnik_TallerMecanico2025.Models
 
                 DetalleRepuestoRepo _detalleRepuestoRepo = new DetalleRepuestoRepo(configuration);
                 // 2. Calcular el costo de repuestos asociados
-                var detalles = _detalleRepuestoRepo.ObtenerPorId(idServicio);
+                var detalles = _detalleRepuestoRepo.ObtenerPorIdServicio(idServicio);
                 decimal costoRepuestos = detalles.Sum(d => d.Cantidad * d.Repuesto.CostoRepuestoBase);
 
                 // 3. Calcular total y actualizar en BD

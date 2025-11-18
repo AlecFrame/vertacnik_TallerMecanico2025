@@ -48,5 +48,26 @@ namespace vertacnik_TallerMecanico2025.Models
                 return TipoServicio!=null? TipoServicio.Nombre : "Desconocido";
             }
         }
+
+        [NotMapped]
+        public string UsuarioNombre
+        {
+            get
+            {
+                return Usuario!=null? Usuario.NombreCompleto : "Desconocido";
+            }
+        }
+
+        [NotMapped]
+        public string DescripcionCompleta
+        {
+            get
+            {
+                return "Servicio #"+IdServicio+": pedido("+IdPedido
+                +", tipo("+IdTipoServicio+"), usuario("+IdUsuario+")"
+                +", fecha("+Fecha.ToShortDateString()+"), descripcion("+Descripcion+")"
+                +", costoBase("+CostoBase+"), estado("+Estado+")" ;
+            }
+        }
     }
 }

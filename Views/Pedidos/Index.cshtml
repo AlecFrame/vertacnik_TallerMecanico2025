@@ -8,6 +8,16 @@
     body {
         background: radial-gradient(circle, #18181c 20%, #2a2733);
     }
+    .estado {
+        font-weight: bold;
+        padding: 4px 10px;
+        border-radius: 5px;
+    }
+    .estado.pendiente { background-color: #ffc107; color: #000; }
+    .estado.proceso { background-color: #17a2b8; color: #fff; }
+    .estado.finalizado { background-color: #28a745; color: #fff; }
+    .estado.pagado { background-color: #007bff; color: #fff; }
+    .estado.cancelado { background-color: #dc3545; color: #fff; }
     [v-cloak] { display: none; }
 </style>
 
@@ -37,11 +47,13 @@
                 <td>{{ new Date(pedido.fechaIngreso).toLocaleDateString() }}</td>
                 <td>{{ pedido.costoEstimado }}</td>
                 <td>{{ obtenerCostoFinal(pedido.costoFinal) }}</td>
-                <td>{{ obtenerNombreEstado(pedido.estado) }}</td>
-                <td class="d-flex gap-2">
+                <td>
+                    <span :class="['estado', estadoClase(pedido.estado)]">{{ estadoNombre(pedido.estado) }}</span>
+                </td>
+                <td class="d-flex">
                     <button class="btn btn-sm btn-info" @@click="detallePedido(pedido)">Ver Detalle</button>
                     <button v-if="pedido.sePuedeEditar" class="btn btn-sm btn-primary" @@click="editarPedido(pedido)">Editar</button>
-                    <button v-if="pedido.sePuedeEditar" class="btn btn-sm btn-danger" @@click="cancelarPedido(pedido, true)">Cancelar</button>
+                    <button v-if="pedido.sePuedeCancelar" class="btn btn-sm btn-danger" @@click="cancelarPedido(pedido, true)">Cancelar</button>
                     <button v-if="pedido.sePuedeActivar" class="btn btn-sm btn-success" @@click="cancelarPedido(pedido, false)">Activar</button>
                 </td>
             </tr>
@@ -204,14 +216,24 @@ createApp({
                 return 'Aún no cargado';
             }
         },
-        obtenerNombreEstado(valor) {
+        estadoNombre(valor) {
             switch (valor) {
-            case 1: return 'Pendiente';
-            case 2: return 'En proceso';
-            case 3: return 'Finalizado';
-            case 4: return 'Pagado';
-            case 5: return 'Cancelado';
-            default: return 'Desconocido';
+                case 1: return 'Pendiente';
+                case 2: return 'En proceso';
+                case 3: return 'Finalizado';
+                case 4: return 'Pagado';
+                case 5: return 'Cancelado';
+                default: return 'Desconocido';
+            }
+        },
+        estadoClase(valor) {
+            switch (valor) {
+                case 1: return 'pendiente';
+                case 2: return 'proceso';
+                case 3: return 'finalizado';
+                case 4: return 'pagado';
+                case 5: return 'cancelado';
+                default: return '';
             }
         },
         paginasTotales() {
@@ -221,12 +243,20 @@ createApp({
             this.modalTitulo = "Nuevo Pedido";
             this.form = { idPedido: 0, idCliente: 0, idVehiculo: 0, observacionCliente: '' };
             this.errores = {};
+            this.selectedCliente = null;
+            this.busquedaCliente = '';
+            this.selectedVehiculo = null;
+            this.busquedaVehiculo = '';
             new bootstrap.Modal(document.getElementById('modalPedido')).show();
         },
         editarPedido(pedido) {
             this.modalTitulo = "Editar Pedido";
             this.form = { ...pedido };
             this.errores = {};
+            this.selectedCliente = { IdCliente: pedido.vehiculo.idCliente, NombreCompleto: pedido.vehiculo.duenoNombre };
+            this.busquedaCliente = pedido.vehiculo.duenoNombre;
+            this.selectedVehiculo = { IdVehiculo: pedido.idVehiculo, DescripcionCorta: pedido.vehiculo.descripcionCorta };
+            this.busquedaVehiculo = pedido.vehiculo.descripcionCorta;
             new bootstrap.Modal(document.getElementById('modalPedido')).show();
         },
         async guardarPedido() {
@@ -301,8 +331,8 @@ createApp({
                 console.groupEnd();
             }
         },
-        cancelarPedido(pedido, activo) {
-            fetch(`/Pedidos/CancelarPedido?id=${pedido.idPedido}&activo=${activo}`, {
+        cancelarPedido(pedido, cancelar) {
+            fetch(`/Pedidos/CancelarPedido?id=${pedido.idPedido}&cancelar=${cancelar}`, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
@@ -387,6 +417,11 @@ createApp({
             console.log('Redirigiendo a detalle del pedido', pedido.idPedido);
             // redirigir al controlador
             window.location.href = `/Pedidos/DetallePedido/${pedido.idPedido}`;
+        },
+        closeModal(modalId) {
+            document.activeElement.blur(); 
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) modal.hide();
         }
     }
 }).mount('#app');
