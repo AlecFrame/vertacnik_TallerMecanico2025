@@ -30,6 +30,7 @@ public class PedidosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "RecepcionOnly")]
     public IActionResult Guardar(Pedido pedido)
     {
         if (ModelState.IsValid)

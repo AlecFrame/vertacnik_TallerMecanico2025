@@ -26,6 +26,7 @@ public class ClientesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "RecepcionOnly")]
     public IActionResult Guardar(Cliente cliente)
     {
         if (ModelState.IsValid)
@@ -72,6 +73,7 @@ public class ClientesController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "RecepcionOnly")]
     public IActionResult CambiarEstado(int id, bool activo)
     {
         _repo.CambiarEstado(id, activo);

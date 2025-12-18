@@ -67,5 +67,8 @@ namespace vertacnik_TallerMecanico2025.Models
 
         [NotMapped]
         public string NombreCompleto => $"{Nombre} {Apellido}";
+
+        [NotMapped]
+        public string Detalle => $"{NombreCompleto}, {Rol}, {Email}, {Telefono}, {Dni}";
     }
 }

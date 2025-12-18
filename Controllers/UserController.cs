@@ -30,17 +30,17 @@ public class UserController : Controller
             if (usuario != null)
             {
                 var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, usuario.NombreCompleto),
-                new Claim(ClaimTypes.Role, usuario.Rol.ToString()),
-                new Claim("IdUsuario", usuario.IdUsuario.ToString()),
-                new Claim("NombreCompleto", usuario.NombreCompleto),
-                new Claim("DNI", usuario.Dni),
-                new Claim("Rol", usuario.Rol.ToString()),
-                new Claim("Email", usuario.Email),
-                new Claim("Telefono", usuario.Telefono),
-                new Claim("Avatar", usuario.Avatar ?? "")
-            };
+                {
+                    new Claim(ClaimTypes.Name, usuario.NombreCompleto),
+                    new Claim(ClaimTypes.Role, usuario.Rol.ToString()),
+                    new Claim("IdUsuario", usuario.IdUsuario.ToString()),
+                    new Claim("NombreCompleto", usuario.NombreCompleto),
+                    new Claim("DNI", usuario.Dni),
+                    new Claim("Rol", usuario.Rol.ToString()),
+                    new Claim("Email", usuario.Email),
+                    new Claim("Telefono", usuario.Telefono),
+                    new Claim("Avatar", usuario.Avatar ?? "")
+                };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 var authProperties = new AuthenticationProperties

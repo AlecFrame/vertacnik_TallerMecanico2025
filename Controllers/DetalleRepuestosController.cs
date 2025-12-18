@@ -27,6 +27,7 @@ public class DetalleRepuestosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "MecanicOnly")]
     public IActionResult Guardar(DetalleRepuesto detalle)
     {
         //Console.WriteLine(detalle.Ver);
@@ -82,6 +83,7 @@ public class DetalleRepuestosController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "MecanicOnly")]
     public IActionResult Eliminar(int id)
     {
         DetalleRepuesto? detalle = _repo.ObtenerPorId(id);

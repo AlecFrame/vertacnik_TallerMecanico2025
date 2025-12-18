@@ -27,8 +27,8 @@
                 <th>Año</th>
                 <th>Color</th>
                 <th>Dueño</th>
-                <th>En el taller</th>
-                <th>Acción</th>
+                <th>Estado</th>
+                <th v-if="puedeEditar()">Acción</th>
             </tr>
         </thead>
         <tbody>
@@ -47,18 +47,22 @@
                 <td>{{ vehiculo.color }}</td>
                 <td>{{ vehiculo.duenoNombre }}</td>
                 <td>
-                    <span v-if="vehiculo.enElTaller" class="badge bg-success" style="padding: 10px;">Está</span>
-                    <span v-else class="badge bg-secondary" style="padding: 10px;">No Está</span>
+                    <span v-if="vehiculo.enElTaller" class="badge bg-success" style="padding: 10px;">Activo</span>
+                    <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
                 </td>
-                <td>
-                    <button class="btn btn-sm btn-primary" @@click="editarVehiculo(vehiculo)">Editar</button>
+                <td v-if="puedeEditar()">
+                    <div class="d-flex">
+                        <button v-if="vehiculo.enElTaller" class="btn btn-sm btn-primary" @@click="editarVehiculo(vehiculo)">Editar</button>
+                        <button v-if="vehiculo.enElTaller" class="btn btn-sm btn-danger" @@click="cambiarEstado(vehiculo, false)">Baja</button>
+                        <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(vehiculo, true)">Alta</button>
+                    </div>
                 </td>
             </tr>
             <tr v-if="vehiculos.length === 0">
                 <td colspan="10" class="text-center">No hay vehiculos registrados.</td>
             </tr>
         </tbody>
-        <tfoot>
+        <tfoot v-if="puedeEditar()">
             <tr>
                 <td colspan="10" class="text-end">
                     <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
@@ -81,7 +85,7 @@
     </div>
 
     <!-- Modal de Vehículo -->
-    <div class="modal fade" id="modalVehiculo" tabindex="-1" aria-hidden="true">
+    <div v-if="puedeEditar()" class="modal fade" id="modalVehiculo" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form  @@submit.prevent="guardarVehiculo()">
@@ -158,10 +162,6 @@
                                 <small>Seleccionado: {{ selectedCliente.NombreCompleto }}</small>
                             </div>
                         </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" v-model="form.estado" name="EnElTaller" class="form-check-input" id="estadoCheck">
-                            <label class="form-check-label" for="estadoCheck">¿Está en el taller?</label>
-                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" @@click="guardarVehiculo()">Guardar</button>
@@ -180,6 +180,7 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
+            userRol: "@User.FindFirst("Rol")?.Value",
             vehiculos: [],
             form: {
                 idVehiculo: 0,
@@ -190,9 +191,9 @@ createApp({
                 anio: '',
                 color: '',
                 idCliente: 0,
-                estado: false
+                estado: true
             },
-                eliminarFoto: false,
+            eliminarFoto: false,
             modalTitulo: '',
             errores: {},
             paginaActual: 1,
@@ -293,11 +294,10 @@ createApp({
             this.eliminarFoto = false;
             this.form.estado = vehiculo.enElTaller.toString() === 'true' || vehiculo.enElTaller === true;
             this.errores = {};
-            this.selectedCliente = { IdCliente: vehiculo.IdCliente, NombreCompleto: vehiculo.duenoNombre };
+            this.selectedCliente = { IdCliente: vehiculo.idCliente, NombreCompleto: vehiculo.duenoNombre };
             this.busquedaCliente = vehiculo.duenoNombre;
             new bootstrap.Modal(document.getElementById('modalVehiculo')).show();
         },
-
         quitarFoto() {
             // limpiar preview y file input, y marcar para eliminar en servidor
             this.form.foto = null;
@@ -348,6 +348,7 @@ createApp({
                 } else {
                     // mostrar errores de validación
                     this.errores = data.errors || {};
+                    console.log("errores: ", this.errores)
                 }
             } catch (error) {
                 console.error('Error al guardar el vehículo:', error);
@@ -355,28 +356,30 @@ createApp({
             }
         },
         cambiarEstado(vehiculo, activo) {
-            fetch('/Vehiculos/CambiarEstado', {
+            fetch(`/Vehiculos/CambiarEstado?id=${vehiculo.idVehiculo}&activo=${activo}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ id: vehiculo.idVehiculo, estado: activo })
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
                     this.cargarVehiculos(this.paginaActual);
                 } else {
-                    alert('No se pudo cambiar el estado del vehículo.');
+                    alert("No se pudo cambiar el estado");
                 }
-            })
-            .catch(err => {
-                console.error('cambiarEstado error:', err);
-                alert('Ocurrió un error al cambiar el estado. Revisa la consola.');
             });
         },
         closeModal(modalId) {
             document.activeElement.blur(); 
             const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
             if (modal) modal.hide();
+        },
+        puedeEditar() {
+            const RepOAdmin = 
+                this.userRol === "Recepcionista" || 
+                this.userRol === "Administrador";
+
+            return RepOAdmin;
         }
     }
 }).mount('#app');

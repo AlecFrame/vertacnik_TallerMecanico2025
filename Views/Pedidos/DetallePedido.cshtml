@@ -98,12 +98,13 @@
                             <span v-if="s.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
                             <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
                         </td>
-                        <td class="d-flex align-items-center">
-                            <button class="btn btn-sm btn-info" @@click="verRepuestos(s)">Repuestos</button>
-                            <div v-if="sePuedeFinalizarPedido()">
-                                <button v-if="sePuedeFinalizarPedido()" class="btn btn-sm btn-primary" @@click="editarServicio(s)">Editar</button>
-                                <button v-if="s.estado" class="btn btn-sm btn-danger" @@click="cambiarEstadoServicio(s, false)">Baja</button>
-                                <button v-else class="btn btn-sm btn-success" @@click="cambiarEstadoServicio(s, true)">Alta</button>
+                        <td class="align-items-center">
+                            <div class="d-flex">
+                                <button class="btn btn-sm btn-info" @@click="verRepuestos(s)">Repuestos</button>
+                                <div v-if="sePuedeFinalizarPedido()">
+                                    <button v-if="s.estado" class="btn btn-sm btn-danger" @@click="cambiarEstadoServicio(s, false)">Baja</button>
+                                    <button v-else class="btn btn-sm btn-success" @@click="cambiarEstadoServicio(s, true)">Alta</button>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -157,8 +158,10 @@
                         <td>${{ r.repuesto.costoRepuestoBase }}</td>
                         <td>${{ r.total }}</td>
                         <td v-if="sePuedeFinalizarPedido()">
-                            <button class="btn btn-sm btn-primary" @@click="editarRepuesto(r)">Editar</button>
-                            <button class="btn btn-sm btn-danger" @@click="eliminarRepuesto(r)">Eliminar</button>
+                            <div class="d-flex">
+                                <button class="btn btn-sm btn-primary" @@click="editarRepuesto(r)">Editar</button>
+                                <button class="btn btn-sm btn-danger" @@click="eliminarRepuesto(r)">Eliminar</button>
+                            </div>
                         </td>
                     </tr>
                     <tr v-if="repuestos.length === 0">
@@ -786,7 +789,7 @@ createApp({
         },
         abrirModalFinal() {
             this.modalTitulo = "Finalizar el Pedido";
-            this.formFin = { observacionFinal: '', costoFinal: this.pedido.costoEstimado };
+            this.formFin = { observacionFinal: '', costoFinal: Math.round(parseFloat(this.pedido.costoEstimado)) };
             this.errores = {};
             new bootstrap.Modal(document.getElementById('modalFin')).show();
         },

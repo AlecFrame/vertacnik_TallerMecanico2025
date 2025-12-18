@@ -28,8 +28,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Administrador"));
-    options.AddPolicy("UserOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Mecanico"));
-    options.AddPolicy("UserOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Recepcionista"));
+    options.AddPolicy("MecanicOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Mecanico", "Administrador"));
+    options.AddPolicy("RecepcionOnly", policy => policy.RequireClaim(ClaimTypes.Role, "Recepcionista", "Administrador"));
 });
 
 var app = builder.Build();

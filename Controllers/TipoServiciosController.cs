@@ -26,6 +26,7 @@ public class TipoServiciosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult Guardar(TipoServicio tipoServicio)
     {
         if (ModelState.IsValid)
@@ -72,6 +73,7 @@ public class TipoServiciosController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult CambiarEstado(int id, bool activo)
     {
         _repo.CambiarEstado(id, activo);

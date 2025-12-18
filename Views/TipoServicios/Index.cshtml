@@ -24,7 +24,7 @@
                 <th>Descripción</th>
                 <th>Costo Base</th>
                 <th>Estado</th>
-                <th>Acción</th>
+                <th v-if="puedeEditar()">Acción</th>
             </tr>
         </thead>
         <tbody>
@@ -37,17 +37,19 @@
                     <span v-if="tipoServicio.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
                     <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
                 </td>
-                <td>
-                    <button v-if="tipoServicio.estado" class="btn btn-sm btn-primary" @@click="editarTipoServicio(tipoServicio)">Editar</button>
-                    <button v-if="tipoServicio.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(tipoServicio, false)">Baja</button>
-                    <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(tipoServicio, true)">Alta</button>
+                <td v-if="puedeEditar()">
+                    <div class="d-flex">
+                        <button v-if="tipoServicio.estado" class="btn btn-sm btn-primary" @@click="editarTipoServicio(tipoServicio)">Editar</button>
+                        <button v-if="tipoServicio.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(tipoServicio, false)">Baja</button>
+                        <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(tipoServicio, true)">Alta</button>
+                    </div>
                 </td>
             </tr>
             <tr v-if="tipoServicios.length === 0">
                 <td colspan="10" class="text-center">No hay tipos de Servicios registrados.</td>
             </tr>
         </tbody>
-        <tfoot>
+        <tfoot v-if="puedeEditar()">
             <tr>
                 <td colspan="10" class="text-end">
                     <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
@@ -70,7 +72,7 @@
     </div>
 
     <!-- Modal de TipoServicio -->
-    <div class="modal fade" id="modalTipoServicio" tabindex="-1" aria-hidden="true">
+    <div v-if="puedeEditar()" class="modal fade" id="modalTipoServicio" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form  @@submit.prevent="guardarTipoServicio()">
@@ -114,6 +116,7 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
+            userRol: "@User.FindFirst("Rol")?.Value",
             tipoServicios: [],
             form: {
                 idTipoServicio: 0,
@@ -210,6 +213,9 @@ createApp({
             document.activeElement.blur(); 
             const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
             if (modal) modal.hide();
+        },
+        puedeEditar() {
+            return this.userRol === "Administrador";
         }
     }
 }).mount('#app');

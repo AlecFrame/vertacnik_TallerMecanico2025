@@ -2,10 +2,12 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using vertacnik_TallerMecanico2025.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 namespace vertacnik_TallerMecanico2025.Controllers;
 
-[Authorize(Policy = "AdminOnly")]
 public class UsuariosController : Controller
 {
     private readonly ILogger<UsuariosController> _logger;
@@ -19,6 +21,7 @@ public class UsuariosController : Controller
         _logger = logger;
     }
 
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult Index()
     {
         return View();
@@ -26,31 +29,52 @@ public class UsuariosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Guardar(Usuario usuario, IFormFile? foto)
+    public async Task<IActionResult> Guardar(Usuario usuario, IFormFile? foto)
     {
+        var userId = @User.FindFirst("IdUsuario")?.Value;
+        var userRol = @User.FindFirst("Rol")?.Value;
+
+        if (userRol != "Administrador" && userId != usuario.IdUsuario.ToString())
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = false });
+            }
+            else
+            {
+                return RedirectToAction("Index");
+            }
+        }
+
+        var mismoUsuario = false;
+
         // Leer el valor raw que vino en el formulario (si vino)
         var claveRaw = Request.Form["ClaveHash"].ToString();
 
-        Console.WriteLine("Clave raw recibida: " + claveRaw);
-        Console.WriteLine("Clave model state: " + usuario.ClaveHash);
-
         // Si estamos editando y no se ingresó clave nueva, mantener la clave existente
         Usuario? usuarioExistente = null;
+
         if (usuario.IdUsuario > 0)
         {
             usuarioExistente = _repo.ObtenerPorId(usuario.IdUsuario);
 
-            if (string.IsNullOrWhiteSpace(claveRaw))
-            {
-                // evitar la validación requerida sobre Clave cuando es edición y no se cambia
-                ModelState.Remove(nameof(usuario.ClaveHash));
-                if (usuarioExistente != null)
+            if (usuarioExistente != null)
+            {   
+                if (string.IsNullOrWhiteSpace(claveRaw))
                 {
-                    usuario.ClaveHash = usuarioExistente.ClaveHash; // ya está hasheada en la BDD
+                    // evitar la validación requerida sobre Clave cuando es edición y no se cambia
+                    ModelState.Remove(nameof(usuario.ClaveHash));
+                    
+                    // ya está hasheada en la BDD
+                    usuario.ClaveHash = usuarioExistente.ClaveHash;
                 }
+
+                // Si el usuario se edito a si mismo no puede cambiar su rol asi que se queda con el que tiene en la base de datos o el usuario de id 1 no puede cambiar su rol establecido, lo seteo por si acaso
+                if (usuario.IdUsuario == 1 || usuario.IdUsuario.ToString() == userId)
+                    usuario.Rol = usuarioExistente.Rol;
             }
         }
-
+        
         // comprobar si viene la instrucción de eliminar foto
         var eliminarFotoFlag = Request.Form["eliminarFoto"].ToString().ToLower() == "true";
 
@@ -99,6 +123,40 @@ public class UsuariosController : Controller
             if (usuario.IdUsuario > 0)
             {
                 _repo.Modificar(usuario);
+                
+                // Si se está modificando el mismo usuario, actualizar los claim
+                if (usuario.IdUsuario.ToString() == userId)
+                {
+                    if (usuario != null)
+                    {
+                        var claims = new List<Claim>
+                        {
+                            new Claim(ClaimTypes.Name, usuario.NombreCompleto),
+                            new Claim(ClaimTypes.Role, usuario.Rol.ToString()),
+                            new Claim("IdUsuario", usuario.IdUsuario.ToString()),
+                            new Claim("NombreCompleto", usuario.NombreCompleto),
+                            new Claim("DNI", usuario.Dni),
+                            new Claim("Rol", usuario.Rol.ToString()),
+                            new Claim("Email", usuario.Email),
+                            new Claim("Telefono", usuario.Telefono),
+                            new Claim("Avatar", usuario.Avatar ?? "")
+                        };
+
+                        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                        var authProperties = new AuthenticationProperties
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(25)
+                        };
+
+                        await HttpContext.SignInAsync(
+                            CookieAuthenticationDefaults.AuthenticationScheme,
+                            new ClaimsPrincipal(claimsIdentity),
+                            authProperties);
+
+                        mismoUsuario = true;
+                    } 
+                }
             }
             else
             {
@@ -108,7 +166,7 @@ public class UsuariosController : Controller
             // Si es AJAX, devolver JSON, si no, redirigir
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-                return Json(new { success = true });
+                return Json(new { success = true, mismoUsuario });
             }
             else
             {
@@ -150,6 +208,7 @@ public class UsuariosController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult CambiarEstado(int id, bool activo)
     {
         _repo.CambiarEstado(id, activo);
@@ -163,6 +222,7 @@ public class UsuariosController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult GetAll()
     {
         var lista = _repo.ObtenerTodos();
@@ -170,6 +230,7 @@ public class UsuariosController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult GetPaged(int pagina = 1, int tamanioPagina = 10)
     {
         var (lista, total) = _repo.ObtenerPaginado(pagina, tamanioPagina);

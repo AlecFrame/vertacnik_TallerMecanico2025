@@ -51,9 +51,13 @@
                     <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
                 </td>
                 <td>
-                    <button v-if="usuario.estado" class="btn btn-sm btn-primary" @@click="editarUsuario(usuario)">Editar</button>
-                    <button v-if="usuario.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(usuario, false)">Baja</button>
-                    <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(usuario, true)">Alta</button>
+                    <div class="d-flex">
+                        <button v-if="usuario.estado && usuario.idUsuario != 1" class="btn btn-sm btn-primary" @@click="editarUsuario(usuario)">Editar</button>
+                        <div v-if="@User.FindFirst("IdUsuario")?.Value!=usuario.idUsuario && usuario.idUsuario!=1">
+                            <button v-if="usuario.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(usuario, false)">Baja</button>
+                            <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(usuario, true)">Alta</button>
+                        </div>
+                    </div>
                 </td>
             </tr>
             <tr v-if="usuarios.length === 0">
@@ -98,7 +102,7 @@
                         <div class="mb-3 text-center">
                             <div id="fotoPreview" class="rounded-circle text-white d-inline-flex justify-content-center align-items-center"
                                 style="width:100px;height:100px;font-size:36px;overflow:hidden;background-color:#9e59be;">
-                                <img v-if="form.avatar" :src="form.avatarRelativePath" alt="Avatar" class="w-100 h-100" style="object-fit: cover;" />
+                                <img v-if="form.avatar" :src="form.avatar" alt="Avatar" class="w-100 h-100" style="object-fit: cover;" />
                                 <span v-else>
                                     {{ form.nombre ? form.nombre.charAt(0).toUpperCase() : '?' }}
                                 </span>
@@ -134,7 +138,8 @@
                             <input v-model="form.email" name="Email" type="email" class="form-control">
                             <div v-if="errores.Email" class="text-danger">{{ errores.Email[0] }}</div>
                         </div>
-                        <div class="mb-3">
+                        <!-- El usuario no puede editar su propio rol y no se puede editar el rol del usuario 1 -->
+                        <div v-if="@User.FindFirst("IdUsuario")?.Value != form.idUsuario && form.idUsuario!=1" class="mb-3">
                             <label>Rol</label>
                             <select v-model="form.rol" name="Rol" class="form-control">
                                 <option v-for="rol in roles" :key="rol" :value="rol">{{ rol }}</option>
@@ -276,6 +281,7 @@ createApp({
             }
 
             try {
+                /*
                 console.log('Enviando datos del formulario:', {
                     idUsuario: this.form.idUsuario,
                     nombre: this.form.nombre,
@@ -287,7 +293,7 @@ createApp({
                     clave: this.form.clave,
                     eliminarFoto: this.eliminarFoto,
                     fotoSeleccionada: fotoInput && fotoInput.files.length > 0 ? fotoInput.files[0].name : 'Ninguna'
-                });
+                });*/
 
                 const response = await fetch('/Usuarios/Guardar', {
                     method: 'POST',
@@ -298,6 +304,10 @@ createApp({
                 const data = await response.json();
 
                 if (data.success) {
+                    if (data.mismoUsuario) {
+                        // si el usuario editó su propio perfil, recargar la página para actualizar sesión
+                        window.location.reload();
+                    }
                     // cerrar modal
                     this.closeModal('modalUsuario');
                     // recargar tabla

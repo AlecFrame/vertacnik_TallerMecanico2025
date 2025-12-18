@@ -26,7 +26,7 @@
                 <th>Teléfono</th>
                 <th>Email</th>
                 <th>Estado</th>
-                <th>Acción</th>
+                <th v-if="puedeEditar()">Acción</th>
             </tr>
         </thead>
         <tbody>
@@ -41,17 +41,19 @@
                     <span v-if="cliente.estado" class="badge bg-success" style="padding: 10px;">Activo</span>
                     <span v-else class="badge bg-secondary" style="padding: 10px;">Inactivo</span>
                 </td>
-                <td>
-                    <button v-if="cliente.estado" class="btn btn-sm btn-primary" @@click="editarCliente(cliente)">Editar</button>
-                    <button v-if="cliente.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(cliente, false)">Baja</button>
-                    <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(cliente, true)">Alta</button>
+                <td v-if="puedeEditar()">
+                    <div class="d-flex">
+                        <button v-if="cliente.estado" class="btn btn-sm btn-primary" @@click="editarCliente(cliente)">Editar</button>
+                        <button v-if="cliente.estado" class="btn btn-sm btn-danger" @@click="cambiarEstado(cliente, false)">Baja</button>
+                        <button v-else class="btn btn-sm btn-success" @@click="cambiarEstado(cliente, true)">Alta</button>
+                    </div>
                 </td>
             </tr>
             <tr v-if="clientes.length === 0">
                 <td colspan="10" class="text-center">No hay clientes registrados.</td>
             </tr>
         </tbody>
-        <tfoot>
+        <tfoot v-if="puedeEditar()">
             <tr>
                 <td colspan="10" class="text-end">
                     <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
@@ -74,7 +76,7 @@
     </div>
 
     <!-- Modal de Cliente -->
-    <div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
+    <div v-if="puedeEditar()" class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form  @@submit.prevent="guardarCliente()">
@@ -128,6 +130,7 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
+            userRol: "@User.FindFirst("Rol")?.Value",
             clientes: [],
             form: {
                 idCliente: 0,
@@ -218,7 +221,7 @@ createApp({
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    this.cargarClientes();
+                    this.cargarClientes(this.paginaActual);
                 } else {
                     alert("No se pudo cambiar el estado");
                 }
@@ -228,6 +231,13 @@ createApp({
             document.activeElement.blur(); 
             const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
             if (modal) modal.hide();
+        },
+        puedeEditar() {
+            const RepOAdmin = 
+                this.userRol === "Recepcionista" || 
+                this.userRol === "Administrador";
+
+            return RepOAdmin;
         }
     }
 }).mount('#app');

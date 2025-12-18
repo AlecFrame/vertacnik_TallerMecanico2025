@@ -52,7 +52,7 @@ namespace vertacnik_TallerMecanico2025.Models
             {
                 connection.Open();
                 string sql = "INSERT INTO vehiculos (IdCliente, Patente, Marca, Modelo, Anio, Color, Foto, EnElTaller) " +
-                             "VALUES (@IdCliente, @Patente, @Marca, @Modelo, @Anio, @Color, @Foto, @EnElTaller)";
+                             "VALUES (@IdCliente, @Patente, @Marca, @Modelo, @Anio, @Color, @Foto, 1)";
                 using (MySqlCommand command = new MySqlCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@IdCliente", vehiculo.IdCliente);
@@ -62,7 +62,6 @@ namespace vertacnik_TallerMecanico2025.Models
                     command.Parameters.AddWithValue("@Anio", vehiculo.Anio);
                     command.Parameters.AddWithValue("@Color", vehiculo.Color);
                     command.Parameters.AddWithValue("@Foto", (object?)vehiculo.Foto ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@EnElTaller", vehiculo.EnElTaller);
                     command.ExecuteNonQuery();
                 }
             }
@@ -238,7 +237,7 @@ namespace vertacnik_TallerMecanico2025.Models
             {
                 connection.Open();
                 string sql = @"SELECT * FROM vehiculos
-                       WHERE IdCliente = @IdCliente
+                       WHERE IdCliente = @IdCliente AND EnElTaller = 1
                        AND (Patente LIKE @Query OR Marca LIKE @Query OR Modelo LIKE @Query OR Color LIKE @Query)";
                 using (MySqlCommand command = new MySqlCommand(sql, connection))
                 {

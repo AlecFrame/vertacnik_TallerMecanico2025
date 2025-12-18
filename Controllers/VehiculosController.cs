@@ -26,6 +26,7 @@ public class VehiculosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "RecepcionOnly")]
     public IActionResult Guardar(Vehiculo vehiculo, IFormFile? foto)
     {
         if (ModelState.IsValid)
@@ -121,6 +122,7 @@ public class VehiculosController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "RecepcionOnly")]
     public IActionResult CambiarEstado(int id, bool activo)
     {
         _repo.CambiarEstado(id, activo);

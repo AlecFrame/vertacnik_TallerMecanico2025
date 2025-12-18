@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace vertacnik_TallerMecanico2025.Controllers;
 
-[Authorize]
 public class RepuestosController : Controller
 {
     private readonly ILogger<RepuestosController> _logger;
@@ -26,6 +25,7 @@ public class RepuestosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult Guardar(Repuesto repuesto)
     {
         if (ModelState.IsValid)
@@ -72,6 +72,7 @@ public class RepuestosController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public IActionResult CambiarEstado(int id, bool activo)
     {
         _repo.CambiarEstado(id, activo);

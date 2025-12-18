@@ -50,18 +50,20 @@
                 <td>
                     <span :class="['estado', estadoClase(pedido.estado)]">{{ estadoNombre(pedido.estado) }}</span>
                 </td>
-                <td class="d-flex">
-                    <button class="btn btn-sm btn-info" @@click="detallePedido(pedido)">Ver Detalle</button>
-                    <button v-if="pedido.sePuedeEditar" class="btn btn-sm btn-primary" @@click="editarPedido(pedido)">Editar</button>
-                    <button v-if="pedido.sePuedeCancelar" class="btn btn-sm btn-danger" @@click="cancelarPedido(pedido, true)">Cancelar</button>
-                    <button v-if="pedido.sePuedeActivar" class="btn btn-sm btn-success" @@click="cancelarPedido(pedido, false)">Activar</button>
+                <td>
+                    <div class="d-flex">
+                        <button class="btn btn-sm btn-info" @@click="detallePedido(pedido)">Ver Detalle</button>
+                        <button v-if="puedeEditar() && pedido.sePuedeEditar" class="btn btn-sm btn-primary" @@click="editarPedido(pedido)">Editar</button>
+                        <button v-if="puedeEditar() && pedido.sePuedeCancelar" class="btn btn-sm btn-danger" @@click="cancelarPedido(pedido, true)">Cancelar</button>
+                        <button v-if="puedeEditar() && pedido.sePuedeActivar" class="btn btn-sm btn-success" @@click="cancelarPedido(pedido, false)">Activar</button>
+                    </div>
                 </td>
             </tr>
             <tr v-if="pedidos.length === 0">
                 <td colspan="10" class="text-center">No hay pedidos registrados.</td>
             </tr>
         </tbody>
-        <tfoot>
+        <tfoot v-if="puedeEditar()">
             <tr>
                 <td colspan="10" class="text-end">
                     <button class="btn btn-success" @@click="abrirModalNuevo">+</button>
@@ -84,7 +86,7 @@
     </div>
 
     <!-- Modal de Pedido -->
-    <div class="modal fade" id="modalPedido" tabindex="-1" aria-hidden="true">
+    <div v-if="puedeEditar()" class="modal fade" id="modalPedido" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form  @@submit.prevent="guardarPedido()">
@@ -173,6 +175,7 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
+            userRol: "@User.FindFirst("Rol")?.Value",
             pedidos: [],
             form: {
                 idPedido: 0,
@@ -422,6 +425,13 @@ createApp({
             document.activeElement.blur(); 
             const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
             if (modal) modal.hide();
+        },
+        puedeEditar() {
+            const RepOAdmin = 
+                this.userRol === "Recepcionista" || 
+                this.userRol === "Administrador";
+
+            return RepOAdmin;
         }
     }
 }).mount('#app');

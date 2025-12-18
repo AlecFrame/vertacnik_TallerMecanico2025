@@ -29,6 +29,7 @@ public class ServiciosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "MecanicOnly")]
     public IActionResult Guardar(Servicio servicio)
     {
         //Console.WriteLine("1er, servicio: "+servicio.DescripcionCompleta);
@@ -125,6 +126,7 @@ public class ServiciosController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "MecanicOnly")]
     public IActionResult CambiarEstado(int id, bool activo)
     {
         _repo.CambiarEstado(id, activo);

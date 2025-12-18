@@ -1,4 +1,6 @@
-﻿@{
+﻿@model IEnumerable<vertacnik_TallerMecanico2025.Models.Usuario>
+
+@{
     ViewData["Title"] = "Inicio";
 }
 
@@ -8,32 +10,228 @@
     }
 </style>
 
-<div class="container-fluid taller-container-table" style="flex-direction: row;">
-    <div class="foto-perfilinfo">
-        @if (User.Identity.IsAuthenticated) {
-            @if (!string.IsNullOrEmpty(User.FindFirst("Avatar")?.Value))
-            {
-                <img src="@Url.Content(@User.FindFirst("Avatar")?.Value)" alt="Perfil" class="rounded-circle user-perfil-avatar" style="width: 80px; height: 80px;" />
+<div id="app">
+    <div class="container-fluid taller-container-table" style="flex-direction: row;">
+        <div class="foto-perfilinfo">
+            @if (User.Identity.IsAuthenticated) {
+                @if (!string.IsNullOrEmpty(User.FindFirst("Avatar")?.Value))
+                {
+                    <img src="@Url.Content(@User.FindFirst("Avatar")?.Value)" alt="Perfil" class="rounded-circle user-perfil-avatar" style="width: 80px; height: 80px;" />
+                }
+                else
+                {
+                    string? nombre = User.FindFirst("NombreCompleto")?.Value ?? "";
+                    string? inicial = nombre.Length > 0 ? nombre.Substring(0, 1).ToUpper() : "?";
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center user-perfil-avatar" style="width: 80px; height: 80px; font-size: 48px;">
+                        @inicial
+                    </div>
+                }
             }
-            else
-            {
-                string? nombre = User.FindFirst("NombreCompleto")?.Value ?? "";
-                string? inicial = nombre.Length > 0 ? nombre.Substring(0, 1).ToUpper() : "?";
-                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center user-perfil-avatar" style="width: 80px; height: 80px; font-size: 48px;">
-                    @inicial
+        </div>
+        <div class="info-perfilinfo">
+            <h2 class="mt-3 nombre-perfilinfo">Hola, @User.FindFirst("NombreCompleto")?.Value!</h2>
+            <p>Rol: @User.FindFirst("Rol")?.Value</p>
+            <p>Email: @User.FindFirst("Email")?.Value</p>
+            <p>Telefono: @User.FindFirst("Telefono")?.Value</p>
+            <p>DNI: @User.FindFirst("DNI")?.Value</p>
+            <div class="btns-perfilinfo gap-3">
+                <button class="btn btn-success" @@click="editarPerfil()">Editar Perfil</button>
+                <form asp-controller="User" asp-action="Logout" method="post" class="m-0">
+                    <button class="btn btn-danger">Cerrar sesión</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal de Usuario -->
+        <div class="modal fade" id="modalUsuario" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form  @@submit.prevent="guardarUsuario()">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title">{{ modalTitulo }}</h5>
+                            <button type="button" class="btn-close" @@click="closeModal('modalUsuario')"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="IdUsuario" :value="form.idUsuario" />
+                            <!--  Avatar -->
+                            <div class="mb-3 text-center">
+                                <div id="fotoPreview" class="rounded-circle text-white d-inline-flex justify-content-center align-items-center"
+                                    style="width:100px;height:100px;font-size:36px;overflow:hidden;background-color:#9e59be;">
+                                    <img v-if="form.avatar" :src="form.avatar" alt="Avatar" class="w-100 h-100" style="object-fit: cover;" />
+                                    <span v-else>
+                                        {{ form.nombre ? form.nombre.charAt(0).toUpperCase() : '?' }}
+                                    </span>
+                                </div>
+                                <br />
+                                <div class="d-flex gap-2 justify-content-center" style="flex-direction: column;">
+                                    <input type="file" id="fotoInput" name="foto" class="form-control mt-2" accept="image/*" @@change="previsualizarFoto" />
+                                    <button type="button" class="btn btn-outline-danger mt-2" @@click="quitarFoto">Quitar avatar</button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label>Nombre</label>
+                                <input v-model="form.nombre" name="Nombre" class="form-control">
+                                <div v-if="errores.Nombre" class="text-danger">{{ errores.Nombre[0] }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label>Apellido</label>
+                                <input v-model="form.apellido" name="Apellido" class="form-control">
+                                <div v-if="errores.Apellido" class="text-danger">{{ errores.Apellido[0] }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label>DNI</label>
+                                <input v-model="form.dni" name="Dni" class="form-control">
+                                <div v-if="errores.Dni" class="text-danger">{{ errores.Dni[0] }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label>Teléfono</label>
+                                <input v-model="form.telefono" name="Telefono" class="form-control">
+                                <div v-if="errores.Telefono" class="text-danger">{{ errores.Telefono[0] }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label>Email</label>
+                                <input v-model="form.email" name="Email" type="email" class="form-control">
+                                <div v-if="errores.Email" class="text-danger">{{ errores.Email[0] }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label>Clave</label>
+                                <small v-if="form.idUsuario!=0" class="form-text text-muted">: Dejar en blanco para no cambiar la clave actual.</small>
+                                <input v-model="form.clave" name="Clave" type="password" class="form-control">
+                                <div v-if="errores.Clave" class="text-danger">{{ errores.Clave[0] }}</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" @@click="guardarUsuario()">Guardar</button>
+                            <button type="button" class="btn btn-secondary" @@click="closeModal('modalUsuario')">Cancelar</button>
+                        </div>
+                    </form>
                 </div>
-            }
-        }
-    </div>
-    <div class="info-perfilinfo">
-        <h2 class="mt-3 nombre-perfilinfo">Hola, @User.FindFirst("NombreCompleto")?.Value!</h2>
-        <p>Rol: @User.FindFirst("Rol")?.Value</p
-        <p>Email: @User.FindFirst("Email")?.Value</p>
-        <p>Telefono: @User.FindFirst("Telefono")?.Value</p>
-        <p>DNI: @User.FindFirst("DNI")?.Value</p>
-        <div class="btns-perfilinfo">
-            <a href="javascript:void(0);" class="btn-editar-perfilinfo" data-id="@User.FindFirst("IdUsuario")?.Value">Editar Perfil</a>
-            <a href="javascript:void(0);" class="btn-password-perfilinfo" data-id="@User.FindFirst("IdUsuario")?.Value">Cambiar Contraseña</a>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            usuarioClaim: {
+                idUsuario: @User.FindFirst("IdUsuario")?.Value || 0,
+                avatar: '@User.FindFirst("Avatar")?.Value' || '',
+                nombre: '@User.FindFirst("NombreCompleto")?.Value.Split(' ')[0]' || '',
+                apellido: '@User.FindFirst("NombreCompleto")?.Value.Split(' ')[1]' || '',
+                dni: '@User.FindFirst("DNI")?.Value' || '',
+                telefono: '@User.FindFirst("Telefono")?.Value' || '',
+                email: '@User.FindFirst("Email")?.Value' || '',
+                rol: '@User.FindFirst("Rol")?.Value' || '',
+                avatarRelativePath: '@User.FindFirst("Avatar")?.Value.Replace('~', ' ').Trim()' || '' 
+            },
+            roles: ['Administrador', 'Mecánico', 'Recepcionista'],
+            form: {
+                idUsuario: 0,
+                avatar: null,
+                nombre: '',
+                apellido: '',
+                dni: '',
+                telefono: '',
+                email: '',
+                rol: '',
+                clave: ''
+            },
+            eliminarFoto: false,
+            modalTitulo: '',
+            errores: {}
+        };
+    },
+    methods: {
+        previsualizarFoto(e) {
+            const input = e.target || document.getElementById('fotoInput');
+            if (!input || !input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                // colocar la imagen en el preview (data URL)
+                this.form.avatar = ev.target.result;
+                // al seleccionar una nueva foto, cancelar el flag de eliminar
+                this.eliminarFoto = false;
+            };
+            reader.readAsDataURL(file);
+        },
+        editarPerfil() {
+            this.modalTitulo = "Editar Usuario";
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+            this.form = { ...this.usuarioClaim };
+            this.form.avatar = this.usuarioClaim.avatarRelativePath;
+            this.eliminarFoto = false;
+            this.errores = {};
+            new bootstrap.Modal(document.getElementById('modalUsuario')).show();
+        },
+        quitarFoto() {
+            // limpiar preview y file input, y marcar para eliminar en servidor
+            this.form.avatar = null;
+            this.eliminarFoto = true;
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput) fotoInput.value = '';
+        },
+        async guardarUsuario() {
+            const formData = new FormData();
+            formData.append('IdUsuario', this.form.idUsuario);
+            formData.append('Nombre', this.form.nombre);
+            formData.append('Apellido', this.form.apellido);
+            formData.append('Dni', this.form.dni);
+            formData.append('Telefono', this.form.telefono);
+            formData.append('Email', this.form.email);
+            formData.append('ClaveHash', this.form.clave);
+            // indicar si se solicitó eliminar la foto actual
+            formData.append('EliminarFoto', this.eliminarFoto ? 'true' : 'false');
+
+            // incluir token antiforgery
+            const tokenInput = document.querySelector('#modalUsuario input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : null;
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            // agregar foto si se seleccionó (clave 'foto' para que el parámetro IFormFile? foto bindee)
+            const fotoInput = document.getElementById('fotoInput');
+            if (fotoInput && fotoInput.files.length > 0) {
+                formData.append('foto', fotoInput.files[0]);
+            }
+
+            try {
+                const response = await fetch('/Usuarios/Guardar', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.mismoUsuario) {
+                        // si el usuario editó su propio perfil, recargar la página para actualizar sesión
+                        window.location.reload();
+                    }
+                    // cerrar modal
+                    this.closeModal('modalUsuario');
+                } else {
+                    // mostrar errores de validación
+                    this.errores = data.errors || {};
+                }
+            } catch (error) {
+                console.error('Error al guardar el usuario:', error);
+                alert('Ocurrió un error al guardar el usuario. Revisa la consola.');
+            }
+        },
+        closeModal(modalId) {
+            document.activeElement.blur(); 
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) modal.hide();
+        }
+    }
+}).mount('#app');
+</script>
+}
